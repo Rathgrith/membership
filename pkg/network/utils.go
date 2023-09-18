@@ -7,8 +7,38 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
+
 	"os"
 )
+
+func SendUDPRoutine(HostID int, RequestType string, RequestOutTime time.Time) {
+	// Create a JoinRequest struct
+	request := pkg.JoinRequest{
+		HostID:        HostID,
+		PacketType:    RequestType,
+		PacketOutTime: RequestOutTime,
+	}
+
+	// Serialize the struct
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		fmt.Println("Error marshaling JoinRequest to JSON:", err)
+		return
+	}
+	// for loop to send 10 requests every 1 second
+	for {
+		time.Sleep(1 * time.Second)
+		// Send serialized data via UDP
+		destAddr := "localhost:8000" // Replace with appropriate address and port
+		err = sendUDP(jsonData, destAddr)
+		if err != nil {
+			fmt.Println("Error sending UDP request:", err)
+			return
+		}
+		fmt.Println("JoinRequest sent!")
+	}
+}
 
 func ReceiveUDPRoutine() {
 	// listen to port 8000 for upcomming UDP packets
@@ -33,12 +63,12 @@ func ReceiveUDPRoutine() {
 			fmt.Println("Error unmarshaling JSON:", err)
 			return
 		}
-		fmt.Printf("request id: %d, request type: %s, request time: %s\n", request.HostID, request.RequestType, request.RequestOutTime)
+		fmt.Printf("request id: %d, request type: %s, request time: %s\n", request.HostID, request.PacketType, request.PacketType)
 		fmt.Println("Received", n, "bytes from", addr)
 	}
 }
 
-func SendUDP(data []byte, destAddr string) error {
+func sendUDP(data []byte, destAddr string) error {
 	addr, err := net.ResolveUDPAddr("udp", destAddr)
 	if err != nil {
 		return err
