@@ -126,7 +126,7 @@ func ReceiveUDPRoutine() {
 		fmt.Printf("request id: %d, request type: %s, request time: %s\n", request.HostID, request.PacketType, request.PacketOutTime)
 		fmt.Println("Received", n, "bytes from", addr)
 		if request.PacketType == "joinResponse" {
-
+			close(stopSendCh)
 			// Unmarshal the data and print the data
 			var response pkg.JoinResponse
 			err = json.Unmarshal(buffer[:n], &response)
