@@ -32,7 +32,8 @@ var membershipList = map[int]pkg.MemberInfo{}
 
 // read/write lock for membership list
 var membershipListLock sync.RWMutex
-var stopSendCh = make(chan struct{})
+var stopSendJoinCh = make(chan struct{})
+var closeOnce sync.Once
 
 // check if the received udp packet type is join or leave
 // if join, add the host to the membership list
@@ -76,7 +77,7 @@ func SendJoinUDPRoutine(HostID int, RequestType string, RequestOutTime time.Time
 
 	for {
 		select {
-		case <-stopSendCh:
+		case <-stopSendJoinCh:
 			return
 		default:
 			time.Sleep(1 * time.Second)
@@ -126,7 +127,9 @@ func ReceiveUDPRoutine() {
 		fmt.Printf("request id: %d, request type: %s, request time: %s\n", request.HostID, request.PacketType, request.PacketOutTime)
 		fmt.Println("Received", n, "bytes from", addr)
 		if request.PacketType == "joinResponse" {
-			close(stopSendCh)
+			closeOnce.Do(func() {
+				close(stopSendJoinCh)
+			})
 			// Unmarshal the data and print the data
 			var response pkg.JoinResponse
 			err = json.Unmarshal(buffer[:n], &response)
