@@ -104,6 +104,16 @@ func ReceiveUDPRoutine() {
 		// fmt.Println("Received", n, "bytes from", addr)
 		fmt.Printf("request id: %d, request type: %s, request time: %s\n", request.HostID, request.PacketType, request.PacketOutTime)
 		fmt.Println("Received", n, "bytes from", addr)
+		if request.PacketType == "joinResponse" {
+			// Unmarshal the data and print the data
+			var response pkg.JoinResponse
+			err = json.Unmarshal(buffer[:n], &response)
+			if err != nil {
+				fmt.Println("Error unmarshaling JSON:", err)
+				return
+			}
+			fmt.Printf("response id: %d, response type: %s, response time: %s\n", response.HostID, response.PacketType, response.PacketOutTime)
+		}
 		if request.PacketType == "join" {
 			joinMemberToMembershipList(request, addr)
 			response := pkg.JoinResponse{
@@ -126,16 +136,6 @@ func ReceiveUDPRoutine() {
 				fmt.Println("Error sending JoinResponse:", err)
 				return
 			}
-		}
-		if request.PacketType == "joinResponse" {
-			// Unmarshal the data and print the data
-			var response pkg.JoinResponse
-			err = json.Unmarshal(buffer[:n], &response)
-			if err != nil {
-				fmt.Println("Error unmarshaling JSON:", err)
-				return
-			}
-			fmt.Printf("response id: %d, response type: %s, response time: %s\n", response.HostID, response.PacketType, response.PacketOutTime)
 		}
 	}
 }
