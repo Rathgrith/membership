@@ -6,7 +6,7 @@ import "time"
 type MemberInfo struct {
 	Counter    int       // Counter for the member
 	LocalTime  time.Time // Local timestamp
-	StatusCode int       // Status code (you can specify the type further if needed)
+	StatusCode int       // Status code 1(alive), 2(suspect), 3(failed)
 }
 
 type JoinRequest struct {
@@ -17,8 +17,8 @@ type JoinRequest struct {
 }
 
 type JoinResponse struct {
-	HostID            int
-	PacketType        string
-	PacketDataOutTime time.Time
-	PacketData        map[int]MemberInfo
+	HostID        int
+	PacketType    string
+	PacketOutTime time.Time
+	PacketData    map[int]MemberInfo
 }

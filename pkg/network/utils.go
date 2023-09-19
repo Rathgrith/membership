@@ -2,17 +2,47 @@ package network
 
 import (
 	// "gopkg.in/yaml.v2"
+	"ece428_mp2/config"
 	"ece428_mp2/pkg"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net"
-	"time"
-
 	"os"
+	"sync"
+	"time"
 )
 
-func SendUDPRoutine(HostID int, RequestType string, RequestOutTime time.Time) {
+var membershipList = map[int]pkg.MemberInfo{}
+var membershipListLock sync.RWMutex
+
+// check if the received udp packet type is join or leave
+// if join, add the host to the membership list
+// if leave, remove the host from the membership list
+
+func joinMemberToMembershipList(request pkg.JoinRequest, addr net.Addr) {
+	membershipListLock.Lock()
+	defer membershipListLock.Unlock()
+	membershipList[request.HostID] = pkg.MemberInfo{
+		Counter:    1,
+		LocalTime:  time.Now(),
+		StatusCode: 1,
+	}
+}
+
+func getMembershipList() map[int]pkg.MemberInfo {
+	membershipListLock.RLock()
+	defer membershipListLock.RUnlock()
+
+	// Return a shallow copy of the membershipList to prevent race conditions
+	copiedList := make(map[int]pkg.MemberInfo)
+	for k, v := range membershipList {
+		copiedList[k] = v
+	}
+	return copiedList
+}
+
+func SendUDPRoutine(HostID int, RequestType string, RequestOutTime time.Time, Destination string) {
 	// Create a JoinRequest struct
 	request := pkg.JoinRequest{
 		HostID:        HostID,
@@ -36,11 +66,19 @@ func SendUDPRoutine(HostID int, RequestType string, RequestOutTime time.Time) {
 			fmt.Println("Error sending UDP request:", err)
 			return
 		}
-		fmt.Println("JoinRequest sent!")
+		// fmt.Println("JoinRequest sent!")
 	}
 }
 
 func ReceiveUDPRoutine() {
+	selfHost, err := GetHostname()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	selfID, err := config.GetHostID(selfHost)
+	// comment below when on VM
+	selfHost = "fa23-cs425-4810.cs.illinois.edu"
 	// listen to port 8000 for upcomming UDP packets
 	pc, err := net.ListenPacket("udp", ":8000")
 	if err != nil {
@@ -63,8 +101,33 @@ func ReceiveUDPRoutine() {
 			fmt.Println("Error unmarshaling JSON:", err)
 			return
 		}
-		fmt.Printf("request id: %d, request type: %s, request time: %s\n", request.HostID, request.PacketType, request.PacketType)
+		// fmt.Println("Received", n, "bytes from", addr)
+		fmt.Printf("request id: %d, request type: %s, request time: %s\n", request.HostID, request.PacketType, request.PacketOutTime)
 		fmt.Println("Received", n, "bytes from", addr)
+		if request.PacketType == "join" {
+			joinMemberToMembershipList(request, addr)
+			response := pkg.JoinResponse{
+				HostID:        selfID,
+				PacketType:    "joinResponse",
+				PacketOutTime: time.Now(),
+				PacketData:    getMembershipList(),
+			}
+			jsonResponse, err := json.Marshal(response)
+			if err != nil {
+				fmt.Println("Error marshaling JoinResponse to JSON:", addr.String())
+				return
+			}
+			// println("jsonResponse:", jsonResponse)
+			// Send the response JSON back to the source.
+			targetAddr := fmt.Sprintf("%s:8000", addr.(*net.UDPAddr).IP)
+
+			// Send the response JSON back to the target address.
+			err = sendUDP(jsonResponse, targetAddr)
+			if err != nil {
+				fmt.Println("Error sending JoinResponse:", err)
+				return
+			}
+		}
 	}
 }
 

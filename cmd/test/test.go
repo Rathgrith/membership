@@ -14,18 +14,23 @@ func main() {
 		return
 	}
 	// comment below when on VM
-	host = "fa23-cs425-4810.cs.illinois.edu"
+	// host = "fa23-cs425-4810.cs.illinois.edu"
 	id, err := config.GetHostID(host)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
-	fmt.Println("ID:", id)
+	// fmt.Println("ID:", id)
 
 	// GOROUTINE for receiving UDP packets
-	go network.ReceiveUDPRoutine()
 	// GOROUTINE for sending join request
-	go network.SendUDPRoutine(id, "join", time.Now())
+	introducer, err := config.GetIntroducer()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	go network.SendUDPRoutine(id, "join", time.Now(), introducer)
+	go network.ReceiveUDPRoutine()
 	// Wait indefinitely so the main function does not exit prematurely
 	select {}
 }
