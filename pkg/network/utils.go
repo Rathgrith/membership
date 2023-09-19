@@ -49,14 +49,16 @@ func joinMemberToMembershipList(request pkg.JoinRequest, addr net.Addr) {
 	}
 }
 
-func updateMembershipList(map[int]pkg.MemberInfo) {
-	// Update membership list using the packet data
+func updateMembershipList(receivedList map[int]pkg.MemberInfo) {
 	membershipListLock.Lock()
 	defer membershipListLock.Unlock()
-	for k, v := range membershipList {
-		if v.StatusCode == 1 {
-			v.Counter += 1
-			v.LocalTime = time.Now()
+
+	for k, v := range receivedList {
+		if existingMember, ok := membershipList[k]; ok && v.StatusCode == 1 {
+			existingMember.Counter += v.Counter    // merge counters or however you want to handle this
+			existingMember.LocalTime = v.LocalTime // update the time
+			membershipList[k] = existingMember
+		} else {
 			membershipList[k] = v
 		}
 	}
