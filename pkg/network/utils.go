@@ -112,7 +112,9 @@ func ReceiveUDPRoutine() {
 				fmt.Println("Error unmarshaling JSON:", err)
 				return
 			}
-			fmt.Printf("response id: %d, response type: %s, response time: %s\n", response.HostID, response.PacketType, response.PacketOutTime)
+			for k, v := range response.PacketData {
+				fmt.Printf("member id: %d, member counter: %d, member time: %s, member status: %d\n", k, v.Counter, v.LocalTime, v.StatusCode)
+			}
 		}
 		if request.PacketType == "join" {
 			joinMemberToMembershipList(request, addr)
