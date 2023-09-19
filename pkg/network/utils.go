@@ -117,7 +117,6 @@ func ReceiveUDPRoutine() {
 				fmt.Println("Error marshaling JoinResponse to JSON:", addr.String())
 				return
 			}
-			// println("jsonResponse:", jsonResponse)
 			// Send the response JSON back to the source.
 			targetAddr := fmt.Sprintf("%s:8000", addr.(*net.UDPAddr).IP)
 
@@ -127,6 +126,16 @@ func ReceiveUDPRoutine() {
 				fmt.Println("Error sending JoinResponse:", err)
 				return
 			}
+		}
+		if request.PacketType == "joinResponse" {
+			// Unmarshal the data and print the data
+			var response pkg.JoinResponse
+			err = json.Unmarshal(buffer[:n], &response)
+			if err != nil {
+				fmt.Println("Error unmarshaling JSON:", err)
+				return
+			}
+			fmt.Printf("response id: %d, response type: %s, response time: %s\n", response.HostID, response.PacketType, response.PacketOutTime)
 		}
 	}
 }
