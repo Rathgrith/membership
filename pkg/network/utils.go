@@ -13,6 +13,21 @@ import (
 	"time"
 )
 
+func init() {
+	// Initialize membership list
+	selfHost, err := GetHostname()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	selfID, err := config.GetHostID(selfHost)
+	membershipList[selfID] = pkg.MemberInfo{
+		Counter:    1,
+		LocalTime:  time.Now(),
+		StatusCode: 1,
+	}
+}
+
 var membershipList = map[int]pkg.MemberInfo{}
 var membershipListLock sync.RWMutex
 
