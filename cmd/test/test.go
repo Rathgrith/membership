@@ -29,7 +29,9 @@ func main() {
 		fmt.Println("Error:", err)
 		return
 	}
-	go network.SendUDPRoutine(id, "join", time.Now(), introducer)
+	if introducer != host {
+		go network.SendUDPRoutine(id, "join", time.Now(), introducer)
+	}
 	go network.ReceiveUDPRoutine()
 	// Wait indefinitely so the main function does not exit prematurely
 	select {}
