@@ -77,8 +77,6 @@ func ReceiveUDPRoutine() {
 		return
 	}
 	selfID, err := config.GetHostID(selfHost)
-	// comment below when on VM
-	selfHost = "fa23-cs425-4810.cs.illinois.edu"
 	// listen to port 8000 for upcomming UDP packets
 	pc, err := net.ListenPacket("udp", ":8000")
 	if err != nil {
