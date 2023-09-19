@@ -49,6 +49,18 @@ func joinMemberToMembershipList(request pkg.JoinRequest, addr net.Addr) {
 	}
 }
 
+func updateMembershipList(map[int]pkg.MemberInfo) {
+	// Update membership list using the packet data
+	membershipListLock.Lock()
+	defer membershipListLock.Unlock()
+	for k, v := range membershipList {
+		if v.StatusCode == 1 {
+			v.Counter += 1
+			v.LocalTime = time.Now()
+			membershipList[k] = v
+		}
+	}
+}
 func getMembershipList() map[int]pkg.MemberInfo {
 	membershipListLock.RLock()
 	defer membershipListLock.RUnlock()
@@ -138,9 +150,10 @@ func ReceiveUDPRoutine() {
 				return
 			}
 			// update membership list using the packet data
-			for k, v := range response.PacketData {
-				fmt.Printf("member id: %d, member counter: %d, member time: %s, member status: %d\n", k, v.Counter, v.LocalTime, v.StatusCode)
-			}
+			// for k, v := range response.PacketData {
+			// 	fmt.Printf("member id: %d, member counter: %d, member time: %s, member status: %d\n", k, v.Counter, v.LocalTime, v.StatusCode)
+			// }
+			updateMembershipList(response.PacketData)
 		}
 		if request.PacketType == "join" {
 			joinMemberToMembershipList(request, addr)
