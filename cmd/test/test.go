@@ -14,7 +14,7 @@ func main() {
 		return
 	}
 	// comment below when on VM
-	host = "fa23-cs425-4810.cs.illinois.edu"
+	// host = "fa23-cs425-4810.cs.illinois.edu"
 	id, err := config.GetHostID(host)
 	if err != nil {
 		fmt.Println("Error:", err)
