@@ -14,7 +14,7 @@ func main() {
 		return
 	}
 	// comment below when on VM
-	// host = "fa23-cs425-4810.cs.illinois.edu"
+	host = "fa23-cs425-4810.cs.illinois.edu"
 	id, err := config.GetHostID(host)
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -29,6 +29,8 @@ func main() {
 		fmt.Println("Error:", err)
 		return
 	}
+	fmt.Println("Introducer:", introducer)
+	fmt.Println("Host:", host)
 	if introducer != host {
 		go network.SendUDPRoutine(id, "join", time.Now(), introducer)
 	}

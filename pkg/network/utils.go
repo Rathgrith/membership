@@ -56,11 +56,13 @@ func SendUDPRoutine(HostID int, RequestType string, RequestOutTime time.Time, De
 		fmt.Println("Error marshaling JoinRequest to JSON:", err)
 		return
 	}
+
 	// for loop to send 10 requests every 1 second
 	for {
 		time.Sleep(1 * time.Second)
 		// Send serialized data via UDP
 		destAddr := Destination // Replace with appropriate address and port
+		fmt.Println("Sending UDP request to", destAddr)
 		err = sendUDP(jsonData, destAddr+":8000")
 		if err != nil {
 			fmt.Println("Error sending UDP request:", err)
