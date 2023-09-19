@@ -154,6 +154,11 @@ func ReceiveUDPRoutine() {
 			// 	fmt.Printf("member id: %d, member counter: %d, member time: %s, member status: %d\n", k, v.Counter, v.LocalTime, v.StatusCode)
 			// }
 			updateMembershipList(response.PacketData)
+			fmt.Println("Membership list updated!")
+			fmt.Println("Membership list:")
+			for k, v := range getMembershipList() {
+				fmt.Printf("member id: %d, member counter: %d, member time: %s, member status: %d\n", k, v.Counter, v.LocalTime, v.StatusCode)
+			}
 		}
 		if request.PacketType == "join" {
 			joinMemberToMembershipList(request, addr)
