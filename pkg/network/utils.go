@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func init() {
+func initMembershiplist() {
 	// Initialize membership list
 	selfHost, err := GetHostname()
 	if err != nil {
@@ -29,7 +29,10 @@ func init() {
 }
 
 var membershipList = map[int]pkg.MemberInfo{}
+
+// read/write lock for membership list
 var membershipListLock sync.RWMutex
+var stopSendCh = make(chan struct{})
 
 // check if the received udp packet type is join or leave
 // if join, add the host to the membership list
@@ -48,7 +51,6 @@ func joinMemberToMembershipList(request pkg.JoinRequest, addr net.Addr) {
 func getMembershipList() map[int]pkg.MemberInfo {
 	membershipListLock.RLock()
 	defer membershipListLock.RUnlock()
-
 	// Return a shallow copy of the membershipList to prevent race conditions
 	copiedList := make(map[int]pkg.MemberInfo)
 	for k, v := range membershipList {
@@ -57,7 +59,7 @@ func getMembershipList() map[int]pkg.MemberInfo {
 	return copiedList
 }
 
-func SendUDPRoutine(HostID int, RequestType string, RequestOutTime time.Time, Destination string) {
+func SendJoinUDPRoutine(HostID int, RequestType string, RequestOutTime time.Time, Destination string) {
 	// Create a JoinRequest struct
 	request := pkg.JoinRequest{
 		HostID:        HostID,
@@ -72,18 +74,22 @@ func SendUDPRoutine(HostID int, RequestType string, RequestOutTime time.Time, De
 		return
 	}
 
-	// for loop to send 10 requests every 1 second
 	for {
-		time.Sleep(1 * time.Second)
-		// Send serialized data via UDP
-		destAddr := Destination // Replace with appropriate address and port
-		fmt.Println("Sending UDP request to", destAddr)
-		err = sendUDP(jsonData, destAddr+":8000")
-		if err != nil {
-			fmt.Println("Error sending UDP request:", err)
+		select {
+		case <-stopSendCh:
 			return
+		default:
+			time.Sleep(1 * time.Second)
+			// Send serialized data via UDP
+			destAddr := Destination // Replace with appropriate address and port
+			fmt.Println("Sending UDP request to", destAddr)
+			err = sendUDP(jsonData, destAddr+":8000")
+			if err != nil {
+				fmt.Println("Error sending UDP request:", err)
+				return
+			}
+			// fmt.Println("JoinRequest sent!")
 		}
-		// fmt.Println("JoinRequest sent!")
 	}
 }
 
@@ -120,6 +126,7 @@ func ReceiveUDPRoutine() {
 		fmt.Printf("request id: %d, request type: %s, request time: %s\n", request.HostID, request.PacketType, request.PacketOutTime)
 		fmt.Println("Received", n, "bytes from", addr)
 		if request.PacketType == "joinResponse" {
+
 			// Unmarshal the data and print the data
 			var response pkg.JoinResponse
 			err = json.Unmarshal(buffer[:n], &response)
@@ -127,6 +134,7 @@ func ReceiveUDPRoutine() {
 				fmt.Println("Error unmarshaling JSON:", err)
 				return
 			}
+			// update membership list using the packet data
 			for k, v := range response.PacketData {
 				fmt.Printf("member id: %d, member counter: %d, member time: %s, member status: %d\n", k, v.Counter, v.LocalTime, v.StatusCode)
 			}

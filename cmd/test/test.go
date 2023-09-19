@@ -32,7 +32,7 @@ func main() {
 	fmt.Println("Introducer:", introducer)
 	fmt.Println("Host:", host)
 	if introducer != host {
-		go network.SendUDPRoutine(id, "join", time.Now(), introducer)
+		go network.SendJoinUDPRoutine(id, "join", time.Now(), introducer)
 	}
 	go network.ReceiveUDPRoutine()
 	// Wait indefinitely so the main function does not exit prematurely
