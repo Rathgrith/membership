@@ -13,25 +13,10 @@ import (
 	"time"
 )
 
-func initMembershiplist() {
-	// Initialize membership list
-	selfHost, err := GetHostname()
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	selfID, err := config.GetHostID(selfHost)
-	membershipList[selfID] = pkg.MemberInfo{
-		Counter:    1,
-		LocalTime:  time.Now(),
-		StatusCode: 1,
-	}
-}
-
 var membershipList = map[int]pkg.MemberInfo{}
 
 // read/write lock for membership list
-var membershipListLock sync.RWMutex
+// var membershipListLock sync.RWMutex
 var stopSendJoinCh = make(chan struct{})
 var closeOnce sync.Once
 
@@ -39,40 +24,40 @@ var closeOnce sync.Once
 // if join, add the host to the membership list
 // if leave, remove the host from the membership list
 
-func joinMemberToMembershipList(request pkg.JoinRequest, addr net.Addr) {
-	membershipListLock.Lock()
-	defer membershipListLock.Unlock()
-	membershipList[request.HostID] = pkg.MemberInfo{
-		Counter:    1,
-		LocalTime:  time.Now(),
-		StatusCode: 1,
-	}
-}
+// func joinMemberToMembershipList(request pkg.JoinRequest, addr net.Addr) {
+// 	membershipListLock.Lock()
+// 	defer membershipListLock.Unlock()
+// 	membershipList[request.HostID] = pkg.MemberInfo{
+// 		Counter:    1,
+// 		LocalTime:  time.Now(),
+// 		StatusCode: 1,
+// 	}
+// }
 
-func updateMembershipList(receivedList map[int]pkg.MemberInfo) {
-	membershipListLock.Lock()
-	defer membershipListLock.Unlock()
+// func updateMembershipList(receivedList map[int]pkg.MemberInfo) {
+// 	membershipListLock.Lock()
+// 	defer membershipListLock.Unlock()
 
-	for k, v := range receivedList {
-		if existingMember, ok := membershipList[k]; ok && v.StatusCode == 1 {
-			existingMember.Counter += v.Counter    // merge counters or however you want to handle this
-			existingMember.LocalTime = v.LocalTime // update the time
-			membershipList[k] = existingMember
-		} else {
-			membershipList[k] = v
-		}
-	}
-}
-func getMembershipList() map[int]pkg.MemberInfo {
-	membershipListLock.RLock()
-	defer membershipListLock.RUnlock()
-	// Return a shallow copy of the membershipList to prevent race conditions
-	copiedList := make(map[int]pkg.MemberInfo)
-	for k, v := range membershipList {
-		copiedList[k] = v
-	}
-	return copiedList
-}
+// 	for k, v := range receivedList {
+// 		if existingMember, ok := membershipList[k]; ok && v.StatusCode == 1 {
+// 			existingMember.Counter += v.Counter    // merge counters or however you want to handle this
+// 			existingMember.LocalTime = v.LocalTime // update the time
+// 			membershipList[k] = existingMember
+// 		} else {
+// 			membershipList[k] = v
+// 		}
+// 	}
+// }
+// func getMembershipList() map[int]pkg.MemberInfo {
+// 	membershipListLock.RLock()
+// 	defer membershipListLock.RUnlock()
+// 	// Return a shallow copy of the membershipList to prevent race conditions
+// 	copiedList := make(map[int]pkg.MemberInfo)
+// 	for k, v := range membershipList {
+// 		copiedList[k] = v
+// 	}
+// 	return copiedList
+// }
 
 func SendJoinUDPRoutine(HostID int, RequestType string, RequestOutTime time.Time, Destination string) {
 	// Create a JoinRequest struct
@@ -103,7 +88,6 @@ func SendJoinUDPRoutine(HostID int, RequestType string, RequestOutTime time.Time
 				fmt.Println("Error sending UDP request:", err)
 				return
 			}
-			// fmt.Println("JoinRequest sent!")
 		}
 	}
 }
@@ -151,24 +135,20 @@ func ReceiveUDPRoutine() {
 				fmt.Println("Error unmarshaling JSON:", err)
 				return
 			}
-			// update membership list using the packet data
-			// for k, v := range response.PacketData {
-			// 	fmt.Printf("member id: %d, member counter: %d, member time: %s, member status: %d\n", k, v.Counter, v.LocalTime, v.StatusCode)
-			// }
-			updateMembershipList(response.PacketData)
+			pkg.UpdateMembershipList(response.PacketData)
 			fmt.Println("Membership list updated!")
 			fmt.Println("Membership list:")
-			for k, v := range getMembershipList() {
+			for k, v := range pkg.GetMembershipList() {
 				fmt.Printf("member id: %d, member counter: %d, member time: %s, member status: %d\n", k, v.Counter, v.LocalTime, v.StatusCode)
 			}
 		}
 		if request.PacketType == "join" {
-			joinMemberToMembershipList(request, addr)
+			pkg.JoinToMembershipList(request, addr)
 			response := pkg.JoinResponse{
 				HostID:        selfID,
 				PacketType:    "joinResponse",
 				PacketOutTime: time.Now(),
-				PacketData:    getMembershipList(),
+				PacketData:    pkg.GetMembershipList(),
 			}
 			jsonResponse, err := json.Marshal(response)
 			if err != nil {
