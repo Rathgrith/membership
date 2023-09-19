@@ -60,7 +60,7 @@ func SendUDPRoutine(HostID int, RequestType string, RequestOutTime time.Time, De
 	for {
 		time.Sleep(1 * time.Second)
 		// Send serialized data via UDP
-		destAddr := "localhost:8000" // Replace with appropriate address and port
+		destAddr := Destination // Replace with appropriate address and port
 		err = sendUDP(jsonData, destAddr)
 		if err != nil {
 			fmt.Println("Error sending UDP request:", err)
