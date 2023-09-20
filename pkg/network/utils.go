@@ -14,50 +14,8 @@ import (
 )
 
 var membershipList = map[int]pkg.MemberInfo{}
-
-// read/write lock for membership list
-// var membershipListLock sync.RWMutex
 var stopSendJoinCh = make(chan struct{})
 var closeOnce sync.Once
-
-// check if the received udp packet type is join or leave
-// if join, add the host to the membership list
-// if leave, remove the host from the membership list
-
-// func joinMemberToMembershipList(request pkg.JoinRequest, addr net.Addr) {
-// 	membershipListLock.Lock()
-// 	defer membershipListLock.Unlock()
-// 	membershipList[request.HostID] = pkg.MemberInfo{
-// 		Counter:    1,
-// 		LocalTime:  time.Now(),
-// 		StatusCode: 1,
-// 	}
-// }
-
-// func updateMembershipList(receivedList map[int]pkg.MemberInfo) {
-// 	membershipListLock.Lock()
-// 	defer membershipListLock.Unlock()
-
-// 	for k, v := range receivedList {
-// 		if existingMember, ok := membershipList[k]; ok && v.StatusCode == 1 {
-// 			existingMember.Counter += v.Counter    // merge counters or however you want to handle this
-// 			existingMember.LocalTime = v.LocalTime // update the time
-// 			membershipList[k] = existingMember
-// 		} else {
-// 			membershipList[k] = v
-// 		}
-// 	}
-// }
-// func getMembershipList() map[int]pkg.MemberInfo {
-// 	membershipListLock.RLock()
-// 	defer membershipListLock.RUnlock()
-// 	// Return a shallow copy of the membershipList to prevent race conditions
-// 	copiedList := make(map[int]pkg.MemberInfo)
-// 	for k, v := range membershipList {
-// 		copiedList[k] = v
-// 	}
-// 	return copiedList
-// }
 
 func SendJoinUDPRoutine(Host string, RequestType string, Destination string) {
 	// Create a JoinRequest struct
@@ -78,7 +36,7 @@ func SendJoinUDPRoutine(Host string, RequestType string, Destination string) {
 		case <-stopSendJoinCh:
 			return
 		default:
-			time.Sleep(2 * time.Second)
+
 			// Send serialized data via UDP
 			destAddr := Destination // Replace with appropriate address and port
 			fmt.Println("Sending UDP request to", destAddr)
@@ -133,7 +91,7 @@ func ReceiveUDPRoutine() {
 				fmt.Println("Error unmarshaling JSON:", err)
 				return
 			}
-			pkg.UpdateMembershipList(response.PacketData)
+			pkg.OverwriteMembershipList(response.PacketData)
 			fmt.Println("Membership list updated!")
 			fmt.Println("Membership list:")
 			for k, v := range pkg.GetMembershipList() {

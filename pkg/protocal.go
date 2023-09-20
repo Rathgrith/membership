@@ -19,6 +19,7 @@ type MemberInfo struct {
 	Counter    int       // Counter for the member
 	LocalTime  time.Time // Local timestamp
 	StatusCode int       // Status code 1(alive), 2(suspect), 3(failed)
+	Hostname   string    // The hostname
 }
 
 type JoinRequest struct {
@@ -38,34 +39,83 @@ type JoinResponse struct {
 func InitMembershiplist(hostname string) {
 	membershipListLock.Lock()
 	defer membershipListLock.Unlock()
-	ipAddr := hostname
-	prefixCount := getPrefixCount(ipAddr)
 
-	// Create a unique HostID using IP address and prefix count
-	uniqueHostID := ipAddr + "-daemon" + fmt.Sprintf("%d", prefixCount)
-
-	membershipList[uniqueHostID] = MemberInfo{
-		Counter:    1,
-		LocalTime:  time.Now(),
-		StatusCode: 1,
-	}
+	updateOrAddMember(hostname)
 }
 
 func JoinToMembershipList(request JoinRequest, addr string) {
 	membershipListLock.Lock()
 	defer membershipListLock.Unlock()
 
-	// Extract IP address without port
-	ipAddr := strings.Split(addr, ":")[0]
-	prefixCount := getPrefixCount(ipAddr)
+	updateOrAddMember(request.HostID)
+}
 
-	// Create a unique HostID using IP address and prefix count
-	uniqueHostID := ipAddr + "-daemon" + fmt.Sprintf("%d", prefixCount)
+func OverwriteMembershipList(receivedList map[string]MemberInfo) {
+	membershipListLock.Lock()
+	defer membershipListLock.Unlock()
 
-	membershipList[uniqueHostID] = MemberInfo{
-		Counter:    1,
-		LocalTime:  time.Now(),
-		StatusCode: 1,
+	// Clear the current membership list
+	for k := range membershipList {
+		delete(membershipList, k)
+	}
+
+	// Populate the current membership list with the received list
+	for k, v := range receivedList {
+		membershipList[k] = v
+	}
+}
+
+func updateOrAddMember(hostname string) {
+	// Check if a member with the same hostname exists with status 2
+	var createNewDaemon bool = false
+	var existingDaemonKey string
+
+	for k, v := range membershipList {
+		if v.Hostname == hostname && v.StatusCode == 2 {
+			createNewDaemon = true
+			existingDaemonKey = k
+			break
+		}
+		if v.Hostname == hostname && v.StatusCode == 1 {
+			existingDaemonKey = k
+			break
+		}
+	}
+
+	if createNewDaemon {
+		// Remove the failed daemon
+		delete(membershipList, existingDaemonKey)
+
+		// Add new daemon
+		ipAddr := hostname
+		prefixCount := getPrefixCount(ipAddr)
+		uniqueHostID := ipAddr + "-daemon" + fmt.Sprintf("%d", prefixCount)
+
+		membershipList[uniqueHostID] = MemberInfo{
+			Counter:    1,
+			LocalTime:  time.Now(),
+			StatusCode: 1,
+			Hostname:   hostname,
+		}
+	} else if existingDaemonKey != "" {
+		// Update the existing daemon
+		existingMember := membershipList[existingDaemonKey]
+		existingMember.Counter += 1
+		existingMember.LocalTime = time.Now()
+		existingMember.StatusCode = 1
+		membershipList[existingDaemonKey] = existingMember
+	} else {
+		// Add new daemon
+		ipAddr := hostname
+		prefixCount := getPrefixCount(ipAddr)
+		uniqueHostID := ipAddr + "-daemon" + fmt.Sprintf("%d", prefixCount)
+
+		membershipList[uniqueHostID] = MemberInfo{
+			Counter:    1,
+			LocalTime:  time.Now(),
+			StatusCode: 1,
+			Hostname:   hostname,
+		}
 	}
 }
 
@@ -77,34 +127,6 @@ func getPrefixCount(ipPrefix string) int {
 		}
 	}
 	return count + 1
-}
-
-func UpdateMembershipList(receivedList map[string]MemberInfo) {
-	membershipListLock.Lock()
-	defer membershipListLock.Unlock()
-
-	for k, v := range receivedList {
-		// If the key exists in our current membershipList
-		if existingMember, ok := membershipList[k]; ok {
-			// Choose the larger counter between the existing member and the received member,
-			// then increment it by 1.
-			if existingMember.Counter > v.Counter {
-				v.Counter = existingMember.Counter + 1
-			} else {
-				v.Counter += 1
-			}
-
-			// Update the member's timestamp to the newer one
-			if v.LocalTime.After(existingMember.LocalTime) {
-				existingMember.LocalTime = v.LocalTime
-			}
-
-			membershipList[k] = v
-		} else {
-			// Otherwise, add the received member info to our list
-			membershipList[k] = v
-		}
-	}
 }
 
 func GetMembershipList() map[string]MemberInfo {
