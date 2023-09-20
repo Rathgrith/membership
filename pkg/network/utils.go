@@ -45,6 +45,7 @@ func SendJoinUDPRoutine(Host string, RequestType string, Destination string) {
 				fmt.Println("Error sending UDP request:", err)
 				return
 			}
+			time.Sleep(1 * time.Second)
 		}
 	}
 }
