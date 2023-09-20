@@ -3,7 +3,6 @@ package pkg
 import (
 	// "ece428_mp2/config"
 	"fmt"
-	"net"
 	"strings"
 	"sync"
 	"time"
@@ -52,12 +51,12 @@ func InitMembershiplist(hostname string) {
 	}
 }
 
-func JoinToMembershipList(request JoinRequest, addr net.Addr) {
+func JoinToMembershipList(request JoinRequest, addr string) {
 	membershipListLock.Lock()
 	defer membershipListLock.Unlock()
 
 	// Extract IP address without port
-	ipAddr := strings.Split(addr.String(), ":")[0]
+	ipAddr := strings.Split(addr, ":")[0]
 	prefixCount := getPrefixCount(ipAddr)
 
 	// Create a unique HostID using IP address and prefix count

@@ -141,13 +141,15 @@ func ReceiveUDPRoutine() {
 			}
 		}
 		if request.PacketType == "join" {
-			pkg.JoinToMembershipList(request, addr)
+			joinHost := request.HostID
+			pkg.JoinToMembershipList(request, joinHost)
 			response := pkg.JoinResponse{
 				HostID:        selfHost,
 				PacketType:    "joinResponse",
 				PacketOutTime: time.Now(),
 				PacketData:    pkg.GetMembershipList(),
 			}
+
 			jsonResponse, err := json.Marshal(response)
 			if err != nil {
 				fmt.Println("Error marshaling JoinResponse to JSON:", addr.String())
