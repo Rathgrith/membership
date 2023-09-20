@@ -59,12 +59,11 @@ var closeOnce sync.Once
 // 	return copiedList
 // }
 
-func SendJoinUDPRoutine(HostID int, RequestType string, RequestOutTime time.Time, Destination string) {
+func SendJoinUDPRoutine(Host string, RequestType string, Destination string) {
 	// Create a JoinRequest struct
 	request := pkg.JoinRequest{
-		HostID:        HostID,
-		PacketType:    RequestType,
-		PacketOutTime: RequestOutTime,
+		HostID:     Host,
+		PacketType: RequestType,
 	}
 
 	// Serialize the struct
@@ -122,7 +121,7 @@ func ReceiveUDPRoutine() {
 			return
 		}
 		// fmt.Println("Received", n, "bytes from", addr)
-		fmt.Printf("request id: %d, request type: %s, request time: %s\n", request.HostID, request.PacketType, request.PacketOutTime)
+		fmt.Printf("request id: %s, request type: %s\n", request.HostID, request.PacketType)
 		fmt.Println("Received", n, "bytes from", addr)
 		if request.PacketType == "joinResponse" {
 			closeOnce.Do(func() {
@@ -139,7 +138,7 @@ func ReceiveUDPRoutine() {
 			fmt.Println("Membership list updated!")
 			fmt.Println("Membership list:")
 			for k, v := range pkg.GetMembershipList() {
-				fmt.Printf("member id: %d, member counter: %d, member time: %s, member status: %d\n", k, v.Counter, v.LocalTime, v.StatusCode)
+				fmt.Printf("member id: %s, member counter: %d, member time: %s, member status: %d\n", k, v.Counter, v.LocalTime, v.StatusCode)
 			}
 		}
 		if request.PacketType == "join" {
