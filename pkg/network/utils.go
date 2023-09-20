@@ -78,7 +78,7 @@ func SendJoinUDPRoutine(Host string, RequestType string, Destination string) {
 		case <-stopSendJoinCh:
 			return
 		default:
-			time.Sleep(1 * time.Second)
+			time.Sleep(2 * time.Second)
 			// Send serialized data via UDP
 			destAddr := Destination // Replace with appropriate address and port
 			fmt.Println("Sending UDP request to", destAddr)
@@ -140,7 +140,7 @@ func ReceiveUDPRoutine() {
 				fmt.Printf("member id: %s, member counter: %d, member time: %s, member status: %d\n", k, v.Counter, v.LocalTime, v.StatusCode)
 			}
 		}
-		if request.PacketType == "join" {
+		if request.PacketType == "join" && request.HostID != selfHost {
 			joinHost := request.HostID
 			pkg.JoinToMembershipList(request, joinHost)
 			response := pkg.JoinResponse{
