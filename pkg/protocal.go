@@ -30,7 +30,7 @@ type JoinRequest struct {
 }
 
 type JoinResponse struct {
-	HostID        int
+	HostID        string
 	PacketType    string
 	PacketOutTime time.Time
 	PacketData    map[string]MemberInfo

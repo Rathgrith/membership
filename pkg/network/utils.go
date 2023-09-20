@@ -2,7 +2,7 @@ package network
 
 import (
 	// "gopkg.in/yaml.v2"
-	"ece428_mp2/config"
+
 	"ece428_mp2/pkg"
 	"encoding/json"
 	"fmt"
@@ -97,7 +97,6 @@ func ReceiveUDPRoutine() {
 		fmt.Println("Error:", err)
 		return
 	}
-	selfID, err := config.GetHostID(selfHost)
 	// listen to port 8000 for upcomming UDP packets
 	pc, err := net.ListenPacket("udp", ":8000")
 	if err != nil {
@@ -144,7 +143,7 @@ func ReceiveUDPRoutine() {
 		if request.PacketType == "join" {
 			pkg.JoinToMembershipList(request, addr)
 			response := pkg.JoinResponse{
-				HostID:        selfID,
+				HostID:        selfHost,
 				PacketType:    "joinResponse",
 				PacketOutTime: time.Now(),
 				PacketData:    pkg.GetMembershipList(),
