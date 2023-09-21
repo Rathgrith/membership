@@ -79,6 +79,37 @@ func ReceiveUDPRoutine() {
 	}
 }
 
+func SendSuspicionBroadcast(Host string, BroadcastType string) {
+	if BroadcastType != "EnableSuspicionBroadcast" && BroadcastType != "DisableSuspicionBroadcast" {
+		log.Printf("Invalid BroadcastType: %s", BroadcastType)
+		return
+	}
+
+	broadcast := pkg.Broadcast{
+		Host:         Host,
+		PacketType:   BroadcastType,
+		BroadcastTTL: 3, // Set the TTL value as per your requirements
+	}
+
+	// Serialize the Broadcast struct
+	jsonData, err := json.Marshal(broadcast)
+	if err != nil {
+		log.Printf("Error marshaling Broadcast to JSON: %s", err)
+		return
+	}
+
+	// Send to all nodes in the membership list
+	for _, memberInfo := range pkg.GetMembershipList() {
+		// Don't send back to ourselves
+		if memberInfo.Hostname != Host {
+			targetAddr := memberInfo.Hostname + Port
+			if err := SendUDP(jsonData, targetAddr); err != nil {
+				log.Printf("Error sending Broadcast to %s: %s", targetAddr, err)
+			}
+		}
+	}
+}
+
 func handleIncomingPacket(data []byte, addr net.Addr, selfHost string) {
 	var request pkg.JoinRequest
 	if err := json.Unmarshal(data, &request); err != nil {
@@ -94,7 +125,10 @@ func handleIncomingPacket(data []byte, addr net.Addr, selfHost string) {
 		}
 	case "joinResponse":
 		handleJoinResponse(data)
-	case "SuspicionBroadcast":
+	case "EnableSuspicionBroadcast":
+		fmt.Printf("Received enable suspicion broadcast from %s", request.Host)
+		handleBroadcast(data, selfHost)
+	case "DisableSuspicionBroadcast":
 		fmt.Printf("Received enable suspicion broadcast from %s", request.Host)
 		handleBroadcast(data, selfHost)
 	default:
