@@ -2,7 +2,7 @@ package pkg
 
 import (
 	// "ece428_mp2/config"
-	"fmt"
+
 	"strings"
 	"sync"
 	"time"
@@ -106,8 +106,7 @@ func updateOrAddMember(hostname string) {
 		// Create a new daemon
 		ipAddr := hostname
 		prefixCount := getPrefixCount(ipAddr)
-		uniqueHostID := ipAddr + "-daemon" + fmt.Sprintf("%d", prefixCount)
-
+		uniqueHostID := ipAddr + "-daemon" + TimeStamp()
 		membershipList[uniqueHostID] = MemberInfo{
 			Counter:    1,
 			LocalTime:  time.Now(),
