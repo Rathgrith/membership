@@ -86,46 +86,25 @@ func UpdateLocalTimestampForNode(hostname string) {
 }
 
 func updateOrAddMember(hostname string) {
-	// Check if a member with the same hostname exists with status 2
-	var createNewDaemon bool = false
+	// Check if a member with the same hostname exists
 	var existingDaemonKey string
 
 	for k, v := range membershipList {
-		if v.Hostname == hostname && v.StatusCode == 2 {
-			createNewDaemon = true
-			existingDaemonKey = k
-			break
-		}
-		if v.Hostname == hostname && v.StatusCode == 1 {
+		if v.Hostname == hostname {
 			existingDaemonKey = k
 			break
 		}
 	}
 
-	if createNewDaemon {
-		// Remove the failed daemon
-		delete(membershipList, existingDaemonKey)
-
-		// Add new daemon
-		ipAddr := hostname
-		prefixCount := getPrefixCount(ipAddr)
-		uniqueHostID := ipAddr + "-daemon" + fmt.Sprintf("%d", prefixCount)
-
-		membershipList[uniqueHostID] = MemberInfo{
-			Counter:    1,
-			LocalTime:  time.Now(),
-			StatusCode: 1,
-			Hostname:   hostname,
-		}
-	} else if existingDaemonKey != "" {
-		// Update the existing daemon
+	if existingDaemonKey != "" && membershipList[existingDaemonKey].StatusCode == 1 {
+		// Update the existing daemon if it's active
 		existingMember := membershipList[existingDaemonKey]
 		existingMember.Counter += 1
 		existingMember.LocalTime = time.Now()
 		existingMember.StatusCode = 1
 		membershipList[existingDaemonKey] = existingMember
 	} else {
-		// Add new daemon
+		// Create a new daemon
 		ipAddr := hostname
 		prefixCount := getPrefixCount(ipAddr)
 		uniqueHostID := ipAddr + "-daemon" + fmt.Sprintf("%d", prefixCount)
