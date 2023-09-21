@@ -95,7 +95,8 @@ func handleIncomingPacket(data []byte, addr net.Addr, selfHost string) {
 	case "joinResponse":
 		handleJoinResponse(data)
 	case "SuspicionBroadcast":
-
+		log.Printf("Received enable suspicion broadcast from %s", request.Host)
+		handleBroadcast(data, selfHost)
 	default:
 		log.Printf("Unknown packet type %s", request.PacketType)
 	}
