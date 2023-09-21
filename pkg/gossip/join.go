@@ -18,6 +18,11 @@ var joinCompleteCh = make(chan struct{})
 var closeOnce sync.Once
 var Port = ":8000"
 var BufferLen = 1024
+var membershipManager *pkg.MembershipManager
+
+func SetMembershipManager(manager *pkg.MembershipManager) {
+	membershipManager = manager
+}
 
 func SendJoinUDPRoutine(Host string, RequestType string, Destination string) {
 	// Create a JoinRequest struct
@@ -98,7 +103,7 @@ func SendSuspicionBroadcast(Host string, BroadcastType string) {
 	}
 
 	// Send to all nodes in the membership list
-	for _, memberInfo := range pkg.GetMembershipList() {
+	for _, memberInfo := range membershipManager.GetMembershipList() {
 		// Don't send back to ourselves
 		if memberInfo.Hostname != Host {
 			targetAddr := memberInfo.Hostname + Port
@@ -136,13 +141,13 @@ func handleIncomingPacket(data []byte, addr net.Addr, selfHost string) {
 }
 
 func handleJoinRequest(request pkg.JoinRequest, addr net.Addr, selfHost string) {
-	pkg.JoinToMembershipList(request, request.Host)
+	membershipManager.JoinToMembershipList(request, request.Host)
 
 	response := pkg.JoinResponse{
 		Host:          selfHost,
 		PacketType:    "joinResponse",
 		PacketOutTime: time.Now(),
-		PacketData:    pkg.GetMembershipList(),
+		PacketData:    membershipManager.GetMembershipList(),
 	}
 
 	data, err := json.Marshal(response)
@@ -186,7 +191,7 @@ func ForwardBroadcast(broadcast pkg.Broadcast, selfHost string) {
 	}
 
 	// Forward the broadcast message to other nodes in the membership list
-	for _, memberInfo := range pkg.GetMembershipList() {
+	for _, memberInfo := range membershipManager.GetMembershipList() {
 		// Don't send back to the source or to ourselves
 		if memberInfo.Hostname != selfHost {
 			targetAddr := memberInfo.Hostname + Port
@@ -195,7 +200,7 @@ func ForwardBroadcast(broadcast pkg.Broadcast, selfHost string) {
 			}
 		}
 		// if there is no other node in the membership list, report that and do nothing
-		if len(pkg.GetMembershipList()) == 1 {
+		if len(membershipManager.GetMembershipList()) == 1 {
 			fmt.Println("No other node in the membership list")
 		}
 	}
@@ -213,9 +218,9 @@ func handleJoinResponse(data []byte) {
 		close(joinCompleteCh)
 	})
 
-	pkg.OverwriteMembershipList(response.PacketData)
+	membershipManager.OverwriteMembershipList(response.PacketData)
 	log.Println("Membership list updated!")
-	for k, v := range pkg.GetMembershipList() {
+	for k, v := range membershipManager.GetMembershipList() {
 		log.Printf("Member: %s, Counter: %d, Time: %s, Status: %d, Hostname: %s",
 			k, v.Counter, v.LocalTime, v.StatusCode, v.Hostname)
 	}

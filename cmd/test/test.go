@@ -16,13 +16,15 @@ func main() {
 	}
 	// GOROUTINE for receiving UDP packets
 	// GOROUTINE for sending join request
+	var membershipManager = pkg.NewMembershipManager()
 	introducer, err := config.GetIntroducer()
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
-	pkg.InitMembershiplist(host)
-	membershipList := pkg.GetMembershipList()
+	membershipManager.InitMembershiplist(host)
+	membershipList := membershipManager.GetMembershipList()
+	gossip.SetMembershipManager(membershipManager)
 	fmt.Println("Membership List:", membershipList)
 	fmt.Println("Introducer:", introducer)
 	fmt.Println("Host:", host)

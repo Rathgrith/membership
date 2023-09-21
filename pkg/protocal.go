@@ -1,18 +1,15 @@
 package pkg
 
 import (
-	// "ece428_mp2/config"
-
 	"strings"
 	"sync"
 	"time"
 )
 
-var (
-	membershipList = make(map[string]MemberInfo)
-	// read/write lock for membership list
+type MembershipManager struct {
+	membershipList     map[string]MemberInfo
 	membershipListLock sync.RWMutex
-)
+}
 
 // Define the structure of member info
 type MemberInfo struct {
@@ -27,6 +24,7 @@ type Broadcast struct {
 	PacketType   string
 	BroadcastTTL int
 }
+
 type JoinRequest struct {
 	Host          string
 	PacketType    string
@@ -41,55 +39,56 @@ type JoinResponse struct {
 	PacketData    map[string]MemberInfo
 }
 
-func InitMembershiplist(hostname string) {
-	membershipListLock.Lock()
-	defer membershipListLock.Unlock()
-
-	updateOrAddMember(hostname)
+func NewMembershipManager() *MembershipManager {
+	return &MembershipManager{
+		membershipList: make(map[string]MemberInfo),
+	}
 }
 
-func JoinToMembershipList(request JoinRequest, addr string) {
-	membershipListLock.Lock()
-	defer membershipListLock.Unlock()
+func (m *MembershipManager) InitMembershiplist(hostname string) {
+	m.membershipListLock.Lock()
+	defer m.membershipListLock.Unlock()
 
-	updateOrAddMember(request.Host)
+	m.updateOrAddMember(hostname)
 }
 
-func OverwriteMembershipList(receivedList map[string]MemberInfo) {
-	membershipListLock.Lock()
-	defer membershipListLock.Unlock()
+func (m *MembershipManager) JoinToMembershipList(request JoinRequest, addr string) {
+	m.membershipListLock.Lock()
+	defer m.membershipListLock.Unlock()
 
-	// Clear the current membership list
-	for k := range membershipList {
-		delete(membershipList, k)
+	m.updateOrAddMember(request.Host)
+}
+
+func (m *MembershipManager) OverwriteMembershipList(receivedList map[string]MemberInfo) {
+	m.membershipListLock.Lock()
+	defer m.membershipListLock.Unlock()
+
+	for k := range m.membershipList {
+		delete(m.membershipList, k)
 	}
 
-	// Populate the current membership list with the received list
 	for k, v := range receivedList {
-		membershipList[k] = v
+		m.membershipList[k] = v
 	}
 }
 
-func UpdateLocalTimestampForNode(hostname string) {
-	membershipListLock.Lock()
-	defer membershipListLock.Unlock()
+func (m *MembershipManager) UpdateLocalTimestampForNode(hostname string) {
+	m.membershipListLock.Lock()
+	defer m.membershipListLock.Unlock()
 
-	for k, v := range membershipList {
-		// Check if the key contains the node's hostname and the node is alive
+	for k, v := range m.membershipList {
 		if strings.Contains(k, hostname) && v.StatusCode == 1 {
-			// Update the LocalTime to the current time for the node
 			v.LocalTime = time.Now()
-			membershipList[k] = v
+			m.membershipList[k] = v
 			break
 		}
 	}
 }
 
-func updateOrAddMember(hostname string) {
-	// Check if a member with the same hostname exists
+func (m *MembershipManager) updateOrAddMember(hostname string) {
 	var activeDaemonKey string
 
-	for k, v := range membershipList {
+	for k, v := range m.membershipList {
 		if v.Hostname == hostname && v.StatusCode == 1 {
 			activeDaemonKey = k
 			break
@@ -97,18 +96,15 @@ func updateOrAddMember(hostname string) {
 	}
 
 	if activeDaemonKey != "" {
-		// Update the active daemon
-		existingMember := membershipList[activeDaemonKey]
+		existingMember := m.membershipList[activeDaemonKey]
 		existingMember.Counter += 1
 		existingMember.LocalTime = time.Now()
-		membershipList[activeDaemonKey] = existingMember
+		m.membershipList[activeDaemonKey] = existingMember
 	} else {
-		// Create a new daemon
 		ipAddr := hostname
-		// prefixCount := getPrefixCount(ipAddr)
 		timestamp := time.Now()
 		uniqueHostID := ipAddr + "-daemon" + timestamp.Format("20060102150405")
-		membershipList[uniqueHostID] = MemberInfo{
+		m.membershipList[uniqueHostID] = MemberInfo{
 			Counter:    1,
 			LocalTime:  time.Now(),
 			StatusCode: 1,
@@ -117,9 +113,9 @@ func updateOrAddMember(hostname string) {
 	}
 }
 
-func getPrefixCount(ipPrefix string) int {
+func (m *MembershipManager) getPrefixCount(ipPrefix string) int {
 	count := 0
-	for id := range membershipList {
+	for id := range m.membershipList {
 		if strings.HasPrefix(id, ipPrefix) {
 			count++
 		}
@@ -127,12 +123,12 @@ func getPrefixCount(ipPrefix string) int {
 	return count + 1
 }
 
-func GetMembershipList() map[string]MemberInfo {
-	membershipListLock.RLock()
-	defer membershipListLock.RUnlock()
+func (m *MembershipManager) GetMembershipList() map[string]MemberInfo {
+	m.membershipListLock.RLock()
+	defer m.membershipListLock.RUnlock()
 
 	copiedList := make(map[string]MemberInfo)
-	for k, v := range membershipList {
+	for k, v := range m.membershipList {
 		copiedList[k] = v
 	}
 	return copiedList
