@@ -155,11 +155,15 @@ func ForwardBroadcast(broadcast pkg.Broadcast, selfHost string) {
 	// Forward the broadcast message to other nodes in the membership list
 	for _, memberInfo := range pkg.GetMembershipList() {
 		// Don't send back to the source or to ourselves
-		if memberInfo.Hostname != broadcast.Host && memberInfo.Hostname != selfHost {
+		if memberInfo.Hostname != selfHost {
 			targetAddr := memberInfo.Hostname + Port
 			if err := SendUDP(data, targetAddr); err != nil {
 				log.Printf("Error sending Broadcast to %s: %s", targetAddr, err)
 			}
+		}
+		// if there is no other node in the membership list, report that and do nothing
+		if len(pkg.GetMembershipList()) == 1 {
+			fmt.Println("No other node in the membership list")
 		}
 	}
 }
