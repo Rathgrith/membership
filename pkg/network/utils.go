@@ -1,7 +1,6 @@
 package network
 
 import (
-	// "gopkg.in/yaml.v2"
 	"ece428_mp2/config"
 	"ece428_mp2/pkg"
 	"encoding/json"

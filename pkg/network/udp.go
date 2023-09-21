@@ -1,12 +1,12 @@
 package network
 
 import (
-	// "fmt"
 	"net"
 )
 
 const (
-	connType = "udp"
+	connType  = "udp"
+	DefaultIP = "0.0.0.0"
 )
 
 func NewUDPConnection(connHost string, connPort string) (*net.UDPConn, error) {
@@ -23,14 +23,12 @@ func NewUDPConnection(connHost string, connPort string) (*net.UDPConn, error) {
 	return conn, nil
 }
 
-// func main() {
-// 	// Example usage
-// 	conn, err := NewUDPConnection("127.0.0.1", "8080")
-// 	if err != nil {
-// 		fmt.Println("Error:", err)
-// 		return
-// 	}
-// 	defer conn.Close()
+func NewUDPListenConn(ipAddr string, port int) (*net.UDPConn, error) {
+	ip := net.ParseIP(ipAddr)
+	listenConn, err := net.ListenUDP(connType, &net.UDPAddr{IP: ip, Port: port})
+	if err != nil {
+		return nil, err
+	}
 
-// 	fmt.Println("UDP connection established!")
-// }
+	return listenConn, nil
+}
