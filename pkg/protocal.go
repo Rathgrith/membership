@@ -105,8 +105,9 @@ func updateOrAddMember(hostname string) {
 	} else {
 		// Create a new daemon
 		ipAddr := hostname
-		prefixCount := getPrefixCount(ipAddr)
-		uniqueHostID := ipAddr + "-daemon" + TimeStamp()
+		// prefixCount := getPrefixCount(ipAddr)
+		timestamp := time.Now()
+		uniqueHostID := ipAddr + "-daemon" + timestamp.Format("20060102150405")
 		membershipList[uniqueHostID] = MemberInfo{
 			Counter:    1,
 			LocalTime:  time.Now(),
