@@ -33,13 +33,7 @@ func main() {
 	<-network.GetJoinCompleteCh() // Wait for the join routine to complete
 
 	// Start broadcasting after joining is complete
-	broadcast := pkg.Broadcast{
-		Host:         host,
-		PacketType:   "SuspicionBroadcast",
-		BroadcastTTL: 3, // Or any default TTL value you want to use
-	}
-	// data, _ := json.Marshal(broadcast)
-	network.ForwardBroadcast(broadcast, host)
+	network.SendSuspicionBroadcast(host, "EnableSuspicionBroadcast")
 
 	// Wait indefinitely so the main function does not exit prematurely
 	select {}
