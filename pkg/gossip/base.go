@@ -1,19 +1,26 @@
 package gossip
 
-import "ece428_mp2/pkg"
+import (
+	"ece428_mp2/pkg"
+	"fmt"
+)
 
 type Service struct {
-	membershipList *pkg.MemberInfo
+	membershipManager *pkg.MembershipManager
 }
 
-func NewGossipService() *Service {
-	return nil
+func NewGossipService(membershipManager *pkg.MembershipManager) *Service {
+	fmt.Println("NewGossipService")
+	fmt.Println(membershipManager.GetMembershipList())
+	return &Service{
+		membershipManager: membershipManager,
+	}
 }
 
 func (s *Service) Serve() {
 
 }
 
-func test(info *pkg.MemberInfo) {
-
+func (s *Service) Test() {
+	fmt.Println(s.membershipManager.GetMembershipList())
 }

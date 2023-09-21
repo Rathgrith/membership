@@ -25,6 +25,8 @@ func main() {
 	membershipManager.InitMembershiplist(host)
 	membershipList := membershipManager.GetMembershipList()
 	gossip.SetMembershipManager(membershipManager)
+	gossipService := gossip.NewGossipService(membershipManager)
+	gossipService.Test()
 	fmt.Println("Membership List:", membershipList)
 	fmt.Println("Introducer:", introducer)
 	fmt.Println("Host:", host)
@@ -33,6 +35,8 @@ func main() {
 		go gossip.SendJoinUDPRoutine(host, "join", introducer)
 	}
 	<-gossip.GetJoinCompleteCh() // Wait for the join routine to complete
+
+	fmt.Println("Join complete")
 
 	// Start broadcasting after joining is complete
 	gossip.SendSuspicionBroadcast(host, "EnableSuspicionBroadcast")
