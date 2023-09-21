@@ -95,7 +95,7 @@ func handleIncomingPacket(data []byte, addr net.Addr, selfHost string) {
 	case "joinResponse":
 		handleJoinResponse(data)
 	case "SuspicionBroadcast":
-		log.Printf("Received enable suspicion broadcast from %s", request.Host)
+		fmt.Printf("Received enable suspicion broadcast from %s", request.Host)
 		handleBroadcast(data, selfHost)
 	default:
 		log.Printf("Unknown packet type %s", request.PacketType)
@@ -140,11 +140,12 @@ func handleBroadcast(data []byte, selfHost string) {
 
 	// If TTL is still positive, forward the broadcast to other nodes
 	if broadcast.BroadcastTTL > 0 {
-		forwardBroadcast(broadcast, selfHost)
+		fmt.Printf("Forwarding broadcast from %s with type %s and TTL %d", broadcast.Host, broadcast.PacketType, broadcast.BroadcastTTL)
+		ForwardBroadcast(broadcast, selfHost)
 	}
 }
 
-func forwardBroadcast(broadcast pkg.Broadcast, selfHost string) {
+func ForwardBroadcast(broadcast pkg.Broadcast, selfHost string) {
 	data, err := json.Marshal(broadcast)
 	if err != nil {
 		log.Printf("Error marshaling Broadcast: %s", err)
