@@ -15,12 +15,15 @@ import (
 
 var membershipList = map[int]pkg.MemberInfo{}
 var stopSendJoinCh = make(chan struct{})
+var joinCompleteCh = make(chan struct{})
 var closeOnce sync.Once
+var Port = ":8000"
+var BufferLen = 1024
 
 func SendJoinUDPRoutine(Host string, RequestType string, Destination string) {
 	// Create a JoinRequest struct
 	request := pkg.JoinRequest{
-		HostID:     Host,
+		Host:       Host,
 		PacketType: RequestType,
 	}
 
@@ -40,7 +43,7 @@ func SendJoinUDPRoutine(Host string, RequestType string, Destination string) {
 			// Send serialized data via UDP
 			destAddr := Destination // Replace with appropriate address and port
 			fmt.Println("Sending UDP request to", destAddr)
-			err = sendUDP(jsonData, destAddr+":8000")
+			err = SendUDP(jsonData, destAddr+":8000")
 			if err != nil {
 				fmt.Println("Error sending UDP request:", err)
 				return
@@ -50,84 +53,136 @@ func SendJoinUDPRoutine(Host string, RequestType string, Destination string) {
 	}
 }
 
+// ReceiveUDPRoutine listens for incoming UDP packets and processes them
 func ReceiveUDPRoutine() {
-	selfHost, err := GetHostname()
+	hostname, err := GetHostname()
 	if err != nil {
-		fmt.Println("Error:", err)
+		log.Printf("Error getting hostname: %s", err)
 		return
 	}
-	// listen to port 8000 for upcomming UDP packets
-	pc, err := net.ListenPacket("udp", ":8000")
+
+	pc, err := net.ListenPacket("udp", Port)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to listen on port %s: %s", Port, err)
 	}
 	defer pc.Close()
 
-	// loop to receive packets
+	buffer := make([]byte, BufferLen)
 	for {
-		buffer := make([]byte, 1024)
 		n, addr, err := pc.ReadFrom(buffer)
 		if err != nil {
-			fmt.Println("Error reading from UDP:", err)
+			log.Printf("Error reading UDP packet: %s", err)
 			return
 		}
-		// unmarshal the data and print the data
-		var request pkg.JoinRequest
-		err = json.Unmarshal(buffer[:n], &request)
-		if err != nil {
-			fmt.Println("Error unmarshaling JSON:", err)
-			return
-		}
-		// fmt.Println("Received", n, "bytes from", addr)
-		fmt.Printf("request id: %s, request type: %s\n", request.HostID, request.PacketType)
-		fmt.Println("Received", n, "bytes from", addr)
-		if request.PacketType == "joinResponse" {
-			closeOnce.Do(func() {
-				close(stopSendJoinCh)
-			})
-			// Unmarshal the data and print the data
-			var response pkg.JoinResponse
-			err = json.Unmarshal(buffer[:n], &response)
-			if err != nil {
-				fmt.Println("Error unmarshaling JSON:", err)
-				return
-			}
-			pkg.OverwriteMembershipList(response.PacketData)
-			fmt.Println("Membership list updated!")
-			fmt.Println("Membership list:")
-			for k, v := range pkg.GetMembershipList() {
-				fmt.Printf("member id: %s, member counter: %d, member time: %s, member status: %d\n", k, v.Counter, v.LocalTime, v.StatusCode)
-			}
-		}
-		if request.PacketType == "join" && request.HostID != selfHost {
-			joinHost := request.HostID
-			pkg.JoinToMembershipList(request, joinHost)
-			response := pkg.JoinResponse{
-				HostID:        selfHost,
-				PacketType:    "joinResponse",
-				PacketOutTime: time.Now(),
-				PacketData:    pkg.GetMembershipList(),
-			}
 
-			jsonResponse, err := json.Marshal(response)
-			if err != nil {
-				fmt.Println("Error marshaling JoinResponse to JSON:", addr.String())
-				return
-			}
-			// Send the response JSON back to the source.
-			targetAddr := fmt.Sprintf("%s:8000", addr.(*net.UDPAddr).IP)
+		go handleIncomingPacket(buffer[:n], addr, hostname)
+	}
+}
 
-			// Send the response JSON back to the target address.
-			err = sendUDP(jsonResponse, targetAddr)
-			if err != nil {
-				fmt.Println("Error sending JoinResponse:", err)
-				return
+func handleIncomingPacket(data []byte, addr net.Addr, selfHost string) {
+	var request pkg.JoinRequest
+	if err := json.Unmarshal(data, &request); err != nil {
+		log.Printf("Error unmarshaling JSON: %s", err)
+		return
+	}
+
+	log.Printf("Received request from %s: %s of type %s", addr, request.Host, request.PacketType)
+	switch request.PacketType {
+	case "join":
+		if request.Host != selfHost {
+			handleJoinRequest(request, addr, selfHost)
+		}
+	case "joinResponse":
+		handleJoinResponse(data)
+	case "SuspicionBroadcast":
+
+	default:
+		log.Printf("Unknown packet type %s", request.PacketType)
+	}
+}
+
+func handleJoinRequest(request pkg.JoinRequest, addr net.Addr, selfHost string) {
+	pkg.JoinToMembershipList(request, request.Host)
+
+	response := pkg.JoinResponse{
+		Host:          selfHost,
+		PacketType:    "joinResponse",
+		PacketOutTime: time.Now(),
+		PacketData:    pkg.GetMembershipList(),
+	}
+
+	data, err := json.Marshal(response)
+	if err != nil {
+		log.Printf("Error marshaling JoinResponse: %s", err)
+		return
+	}
+
+	targetAddr := addr.(*net.UDPAddr).IP.String() + Port
+	if err := SendUDP(data, targetAddr); err != nil {
+		log.Printf("Error sending JoinResponse: %s", err)
+	}
+}
+
+func handleBroadcast(data []byte, selfHost string) {
+	var broadcast pkg.Broadcast
+	if err := json.Unmarshal(data, &broadcast); err != nil {
+		log.Printf("Error unmarshaling Broadcast: %s", err)
+		return
+	}
+
+	// Process the broadcast message here (if necessary)
+	log.Printf("Received broadcast from %s with type %s and TTL %d",
+		broadcast.Host, broadcast.PacketType, broadcast.BroadcastTTL)
+
+	// Decrement TTL
+	broadcast.BroadcastTTL--
+
+	// If TTL is still positive, forward the broadcast to other nodes
+	if broadcast.BroadcastTTL > 0 {
+		forwardBroadcast(broadcast, selfHost)
+	}
+}
+
+func forwardBroadcast(broadcast pkg.Broadcast, selfHost string) {
+	data, err := json.Marshal(broadcast)
+	if err != nil {
+		log.Printf("Error marshaling Broadcast: %s", err)
+		return
+	}
+
+	// Forward the broadcast message to other nodes in the membership list
+	for _, memberInfo := range pkg.GetMembershipList() {
+		// Don't send back to the source or to ourselves
+		if memberInfo.Hostname != broadcast.Host && memberInfo.Hostname != selfHost {
+			targetAddr := memberInfo.Hostname + Port
+			if err := SendUDP(data, targetAddr); err != nil {
+				log.Printf("Error sending Broadcast to %s: %s", targetAddr, err)
 			}
 		}
 	}
 }
 
-func sendUDP(data []byte, destAddr string) error {
+func handleJoinResponse(data []byte) {
+	var response pkg.JoinResponse
+	if err := json.Unmarshal(data, &response); err != nil {
+		log.Printf("Error unmarshaling JoinResponse: %s", err)
+		return
+	}
+
+	closeOnce.Do(func() {
+		close(stopSendJoinCh)
+		close(joinCompleteCh)
+	})
+
+	pkg.OverwriteMembershipList(response.PacketData)
+	log.Println("Membership list updated!")
+	for k, v := range pkg.GetMembershipList() {
+		log.Printf("Member: %s, Counter: %d, Time: %s, Status: %d, Hostname: %s",
+			k, v.Counter, v.LocalTime, v.StatusCode, v.Hostname)
+	}
+}
+
+func SendUDP(data []byte, destAddr string) error {
 	addr, err := net.ResolveUDPAddr("udp", destAddr)
 	if err != nil {
 		return err
@@ -153,15 +208,6 @@ func GetHostname() (string, error) {
 	// hostname format fa23-cs425-48XX.cs.illinois.edu
 }
 
-// write me a function to match the hostname to id: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
-// Hostname format: fa23-cs425-48XX.cs.illinois.edu
-// func GetID() (int, error) {
-// 	hostname, err := GetHostname()
-// 	if err != nil {
-// 		return -1, err
-// 	}
-// 	fmt.Println("Hostname:", hostname)
-// 	fmt.Println("Hostname[11:13]:", hostname[11:13])
-// 	//convert string to int
-// 	return strconv.Atoi(hostname[11:13])
-// }
+func GetJoinCompleteCh() chan struct{} {
+	return joinCompleteCh
+}

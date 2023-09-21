@@ -4,6 +4,7 @@ import (
 	"ece428_mp2/config"
 	"ece428_mp2/pkg"
 	"ece428_mp2/pkg/network"
+	"encoding/json"
 	"fmt"
 	// "time"
 )
@@ -30,6 +31,23 @@ func main() {
 	if introducer != host {
 		go network.SendJoinUDPRoutine(host, "join", introducer)
 	}
+	<-network.GetJoinCompleteCh() // Wait for the join routine to complete
+
+	// Start broadcasting after joining is complete
+	broadcast := pkg.Broadcast{
+		Host:         host,
+		PacketType:   "SuspicionBroadcast",
+		BroadcastTTL: 3, // Or any default TTL value you want to use
+	}
+	data, _ := json.Marshal(broadcast)
+	for _, member := range membershipList {
+		// Forward the broadcast to all other nodes in the membership list
+		// Assuming member has a Hostname attribute
+		if member.Hostname != host {
+			network.SendUDP(data, member.Hostname+":8000")
+		}
+	}
+
 	// Wait indefinitely so the main function does not exit prematurely
 	select {}
 }

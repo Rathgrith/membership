@@ -22,15 +22,20 @@ type MemberInfo struct {
 	Hostname   string    // The hostname
 }
 
+type Broadcast struct {
+	Host         string
+	PacketType   string
+	BroadcastTTL int
+}
 type JoinRequest struct {
-	HostID        string
+	Host          string
 	PacketType    string
 	PacketOutTime time.Time
 	// PacketData    map[int]MemberInfo
 }
 
 type JoinResponse struct {
-	HostID        string
+	Host          string
 	PacketType    string
 	PacketOutTime time.Time
 	PacketData    map[string]MemberInfo
@@ -47,7 +52,7 @@ func JoinToMembershipList(request JoinRequest, addr string) {
 	membershipListLock.Lock()
 	defer membershipListLock.Unlock()
 
-	updateOrAddMember(request.HostID)
+	updateOrAddMember(request.Host)
 }
 
 func OverwriteMembershipList(receivedList map[string]MemberInfo) {
@@ -62,6 +67,21 @@ func OverwriteMembershipList(receivedList map[string]MemberInfo) {
 	// Populate the current membership list with the received list
 	for k, v := range receivedList {
 		membershipList[k] = v
+	}
+}
+
+func UpdateLocalTimestampForNode(hostname string) {
+	membershipListLock.Lock()
+	defer membershipListLock.Unlock()
+
+	for k, v := range membershipList {
+		// Check if the key contains the node's hostname and the node is alive
+		if strings.Contains(k, hostname) && v.StatusCode == 1 {
+			// Update the LocalTime to the current time for the node
+			v.LocalTime = time.Now()
+			membershipList[k] = v
+			break
+		}
 	}
 }
 
