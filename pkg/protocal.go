@@ -87,22 +87,21 @@ func UpdateLocalTimestampForNode(hostname string) {
 
 func updateOrAddMember(hostname string) {
 	// Check if a member with the same hostname exists
-	var existingDaemonKey string
+	var activeDaemonKey string
 
 	for k, v := range membershipList {
-		if v.Hostname == hostname {
-			existingDaemonKey = k
+		if v.Hostname == hostname && v.StatusCode == 1 {
+			activeDaemonKey = k
 			break
 		}
 	}
 
-	if existingDaemonKey != "" && membershipList[existingDaemonKey].StatusCode == 1 {
-		// Update the existing daemon if it's active
-		existingMember := membershipList[existingDaemonKey]
+	if activeDaemonKey != "" {
+		// Update the active daemon
+		existingMember := membershipList[activeDaemonKey]
 		existingMember.Counter += 1
 		existingMember.LocalTime = time.Now()
-		existingMember.StatusCode = 1
-		membershipList[existingDaemonKey] = existingMember
+		membershipList[activeDaemonKey] = existingMember
 	} else {
 		// Create a new daemon
 		ipAddr := hostname
