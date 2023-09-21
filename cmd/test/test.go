@@ -3,13 +3,13 @@ package main
 import (
 	"ece428_mp2/config"
 	"ece428_mp2/pkg"
-	"ece428_mp2/pkg/network"
+	"ece428_mp2/pkg/gossip"
 	"fmt"
 	// "time"
 )
 
 func main() {
-	host, err := network.GetHostname()
+	host, err := gossip.GetHostname()
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
@@ -26,14 +26,14 @@ func main() {
 	fmt.Println("Membership List:", membershipList)
 	fmt.Println("Introducer:", introducer)
 	fmt.Println("Host:", host)
-	go network.ReceiveUDPRoutine()
+	go gossip.ReceiveUDPRoutine()
 	if introducer != host {
-		go network.SendJoinUDPRoutine(host, "join", introducer)
+		go gossip.SendJoinUDPRoutine(host, "join", introducer)
 	}
-	<-network.GetJoinCompleteCh() // Wait for the join routine to complete
+	<-gossip.GetJoinCompleteCh() // Wait for the join routine to complete
 
 	// Start broadcasting after joining is complete
-	network.SendSuspicionBroadcast(host, "EnableSuspicionBroadcast")
+	gossip.SendSuspicionBroadcast(host, "EnableSuspicionBroadcast")
 
 	// Wait indefinitely so the main function does not exit prematurely
 	select {}

@@ -1,4 +1,4 @@
-package network
+package gossip
 
 import (
 	// "gopkg.in/yaml.v2"
@@ -13,7 +13,6 @@ import (
 	"time"
 )
 
-var membershipList = map[int]pkg.MemberInfo{}
 var stopSendJoinCh = make(chan struct{})
 var joinCompleteCh = make(chan struct{})
 var closeOnce sync.Once
