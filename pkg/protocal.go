@@ -145,7 +145,7 @@ func (m *MembershipManager) MarkMembersFailedIfNotUpdated(Tfail time.Duration) {
 	currentTime := time.Now()
 
 	for k, v := range m.membershipList {
-		if k == getHostname() {
+		if strings.HasPrefix(k, getHostname()) {
 			continue
 		}
 		timeElapsed := currentTime.Sub(v.LocalTime)
@@ -164,7 +164,8 @@ func (m *MembershipManager) CleanupFailedMembers(Tclean time.Duration) {
 	currentTime := time.Now()
 
 	for k, v := range m.membershipList {
-		if k == getHostname() {
+		// if the k's prefix is the same as the current host, continue
+		if strings.HasPrefix(k, getHostname()) {
 			continue
 		}
 		timeElapsed := currentTime.Sub(v.LocalTime)
@@ -183,7 +184,7 @@ func (m *MembershipManager) MarkMembersSuspectedIfNotUpdated(Tfail time.Duration
 
 	for k, v := range m.membershipList {
 		// if k is currenthostname, return
-		if k == getHostname() {
+		if strings.HasPrefix(k, getHostname()) {
 			continue
 		}
 		timeElapsed := currentTime.Sub(v.LocalTime)
