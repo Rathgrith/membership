@@ -1,6 +1,8 @@
 package pkg
 
 import (
+	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -9,6 +11,7 @@ import (
 type MembershipManager struct {
 	membershipList     map[string]MemberInfo
 	membershipListLock sync.RWMutex
+	suspicionTriggered bool
 }
 
 // Define the structure of member info
@@ -41,7 +44,9 @@ type JoinResponse struct {
 
 func NewMembershipManager() *MembershipManager {
 	return &MembershipManager{
-		membershipList: make(map[string]MemberInfo),
+		membershipList:     make(map[string]MemberInfo),
+		membershipListLock: sync.RWMutex{},
+		suspicionTriggered: false,
 	}
 }
 
@@ -49,14 +54,14 @@ func (m *MembershipManager) InitMembershiplist(hostname string) {
 	m.membershipListLock.Lock()
 	defer m.membershipListLock.Unlock()
 
-	m.updateOrAddMember(hostname)
+	m.UpdateOrAddMember(hostname)
 }
 
 func (m *MembershipManager) JoinToMembershipList(request JoinRequest, addr string) {
 	m.membershipListLock.Lock()
 	defer m.membershipListLock.Unlock()
 
-	m.updateOrAddMember(request.Host)
+	m.UpdateOrAddMember(request.Host)
 }
 
 func (m *MembershipManager) OverwriteMembershipList(receivedList map[string]MemberInfo) {
@@ -85,7 +90,7 @@ func (m *MembershipManager) UpdateLocalTimestampForNode(hostname string) {
 	}
 }
 
-func (m *MembershipManager) updateOrAddMember(hostname string) {
+func (m *MembershipManager) UpdateOrAddMember(hostname string) {
 	var activeDaemonKey string
 
 	for k, v := range m.membershipList {
@@ -94,7 +99,6 @@ func (m *MembershipManager) updateOrAddMember(hostname string) {
 			break
 		}
 	}
-
 	if activeDaemonKey != "" {
 		existingMember := m.membershipList[activeDaemonKey]
 		existingMember.Counter += 1
@@ -132,4 +136,62 @@ func (m *MembershipManager) GetMembershipList() map[string]MemberInfo {
 		copiedList[k] = v
 	}
 	return copiedList
+}
+
+func (m *MembershipManager) MarkMembersFailedIfNotUpdated(Tfail time.Duration) {
+	m.membershipListLock.Lock()
+	defer m.membershipListLock.Unlock()
+
+	currentTime := time.Now()
+
+	for k, v := range m.membershipList {
+		timeElapsed := currentTime.Sub(v.LocalTime)
+		if timeElapsed > Tfail && v.StatusCode != 2 { // If member is alive or suspected and time elapsed exceeds Tfail
+			v.StatusCode = 2 // Mark as failed
+			fmt.Println("Marking member as failed:", k)
+			m.membershipList[k] = v
+		}
+	}
+}
+
+func (m *MembershipManager) CleanupFailedMembers(Tclean time.Duration) {
+	m.membershipListLock.Lock()
+	defer m.membershipListLock.Unlock()
+
+	currentTime := time.Now()
+
+	for k, v := range m.membershipList {
+		timeElapsed := currentTime.Sub(v.LocalTime)
+		if timeElapsed > Tclean && v.StatusCode == 2 { // If member is failed and time elapsed exceeds Tclean
+			fmt.Println("Removing failed member:", k)
+			delete(m.membershipList, k)
+		}
+	}
+}
+
+func (m *MembershipManager) MarkMembersSuspectedIfNotUpdated(Tfail time.Duration) {
+	m.membershipListLock.Lock()
+	defer m.membershipListLock.Unlock()
+
+	currentTime := time.Now()
+
+	for k, v := range m.membershipList {
+		// if k is currenthostname, return
+		if k == getHostname() {
+			continue
+		}
+		timeElapsed := currentTime.Sub(v.LocalTime)
+		if timeElapsed > Tfail && v.StatusCode == 1 { // If member is alive and time elapsed exceeds Tfail
+			v.StatusCode = 3 // Mark as suspected
+			m.membershipList[k] = v
+		}
+	}
+}
+func getHostname() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return ""
+	}
+	return hostname
+	// hostname format fa23-cs425-48XX.cs.illinois.edu
 }

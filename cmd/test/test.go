@@ -5,8 +5,12 @@ import (
 	"ece428_mp2/pkg"
 	"ece428_mp2/pkg/gossip"
 	"fmt"
+	"time"
 	// "time"
 )
+
+var Tfail = time.Second * 2
+var Tcleanup = time.Second * 4
 
 func main() {
 	host, err := gossip.GetHostname()
@@ -35,11 +39,10 @@ func main() {
 		go gossip.SendJoinUDPRoutine(host, "join", introducer)
 	}
 	<-gossip.GetJoinCompleteCh() // Wait for the join routine to complete
-
-	fmt.Println("Join complete")
-
+	go membershipManager.MarkMembersFailedIfNotUpdated(Tfail)
+	go membershipManager.CleanupFailedMembers(Tcleanup)
 	// Start broadcasting after joining is complete
-	gossip.SendSuspicionBroadcast(host, "EnableSuspicionBroadcast")
+	// gossip.SendSuspicionBroadcast(host, "EnableSuspicionBroadcast")
 
 	// Wait indefinitely so the main function does not exit prematurely
 	select {}
