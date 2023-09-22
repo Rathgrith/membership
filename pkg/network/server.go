@@ -5,7 +5,6 @@ import (
 	"context"
 	"ece428_mp2/pkg/logutil"
 	"ece428_mp2/pkg/network/code"
-	"encoding/json"
 	"fmt"
 	"net"
 )
@@ -18,11 +17,14 @@ const (
 type CallUDPServer struct {
 	listenPort int
 	conn       *net.UDPConn
+	f          DispatchFunc
 
 	errChan         chan error
 	serveContext    context.Context
 	serveCancelFunc context.CancelFunc
 }
+
+type DispatchFunc func(header *code.RequestHeader, reqBody []byte)
 
 func NewUDPServer(listenPort int) (*CallUDPServer, error) {
 	return &CallUDPServer{listenPort: listenPort}, nil
@@ -68,16 +70,10 @@ func (s *CallUDPServer) serveUDPRequest(ctx context.Context, dataBuf *bytes.Buff
 
 	codeHandler := code.HandlerMap[meta.CodeHandlerType]
 	reqHeader, reqBody, err := codeHandler.Read(dataBuf)
-
-	header, err := json.Marshal(reqHeader)
-	if err != nil {
-		panic(err)
-	}
-
-	logutil.Logger.Infof("recieved request; header:%v, body:%v", string(header), string(reqBody.([]byte)))
+	body := reqBody.([]byte)
+	s.f(reqHeader, body)
 }
 
-func Register(receiver interface{}) error {
-	_ = newService(receiver)
-	return nil
+func (s *CallUDPServer) Register(f DispatchFunc) {
+	s.f = f
 }
