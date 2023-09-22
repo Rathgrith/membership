@@ -70,11 +70,11 @@ func (s *CallUDPServer) serveUDPRequest(ctx context.Context, dataBuf *bytes.Buff
 	reqHeader, reqBody, err := codeHandler.Read(dataBuf)
 
 	header, err := json.Marshal(reqHeader)
-	body, err := json.Marshal(reqBody)
 	if err != nil {
 		panic(err)
 	}
-	logutil.Logger.Infof("recieved request; header:%v body:%v", string(header), string(body))
+
+	logutil.Logger.Infof("recieved request; header:%v, body:%v", string(header), string(reqBody.([]byte)))
 }
 
 func Register(receiver interface{}) error {

@@ -5,6 +5,8 @@ import (
 	"reflect"
 )
 
+const ()
+
 type method struct {
 	methodFunc reflect.Method
 	ReqType    reflect.Type

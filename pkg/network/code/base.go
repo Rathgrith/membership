@@ -18,7 +18,27 @@ const MagicNumber = 0x5d6f
 type Meta struct {
 	MagicNumber     int32       `json:"magic_number"`
 	CodeHandlerType HandlerType `json:"code_handler_type"`
-	PayloadLength   uint32      `json:"length"`
+}
+
+func NewMeta(handlerType HandlerType) *Meta {
+	return &Meta{
+		MagicNumber:     MagicNumber,
+		CodeHandlerType: handlerType,
+	}
+}
+
+func WriteMeta(meta *Meta, buf *bytes.Buffer) error {
+	return binary.Write(buf, binary.BigEndian, meta)
+}
+
+func ReadMetaInfo(buffer *bytes.Buffer) (*Meta, error) {
+	meta := Meta{}
+	err := binary.Read(buffer, binary.BigEndian, &meta)
+	if err != nil {
+		return nil, fmt.Errorf("parse meta failed:%w", err)
+	}
+
+	return &meta, nil
 }
 
 type Request struct {
@@ -27,8 +47,8 @@ type Request struct {
 }
 
 type RequestHeader struct {
-	Method     string `json:"method"` // use this field to indicate the receiver which function will be called
-	BodyLength int32  `json:"body_length"`
+	Method     MethodType `json:"method"` // use this field to indicate the receiver which function will be called
+	BodyLength int32      `json:"body_length"`
 }
 
 type RequestBody interface{}
@@ -49,14 +69,4 @@ const (
 
 var HandlerMap = map[HandlerType]Handler{
 	JSONType: NewJSONCodeHandler(),
-}
-
-func ReadMetaInfo(buffer *bytes.Buffer) (*Meta, error) {
-	meta := Meta{}
-	err := binary.Read(buffer, binary.BigEndian, &meta)
-	if err != nil {
-		return nil, fmt.Errorf("parse meta failed:%w", err)
-	}
-
-	return &meta, nil
 }

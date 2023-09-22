@@ -1,16 +1,18 @@
 package network
 
 import (
+	"fmt"
 	"net"
 )
 
 const (
-	connType  = "udp"
-	DefaultIP = "0.0.0.0"
+	connType    = "udp"
+	DefaultIP   = "0.0.0.0"
+	DefaultPort = 10088
 )
 
-func NewUDPConnection(connHost string, connPort string) (*net.UDPConn, error) {
-	udpAddr, err := net.ResolveUDPAddr(connType, connHost+":"+connPort)
+func NewUDPConnection(connHost string, connPort int) (*net.UDPConn, error) {
+	udpAddr, err := net.ResolveUDPAddr(connType, fmt.Sprintf("%s:%d", connHost, connPort))
 	if err != nil {
 		return nil, err
 	}
