@@ -3,42 +3,47 @@ package main
 import (
 	"ece428_mp2/config"
 	"ece428_mp2/pkg"
-	"ece428_mp2/pkg/network"
+	"ece428_mp2/pkg/gossip"
 	"fmt"
 	"time"
+	// "time"
 )
 
-func main() {
-	host, err := network.GetHostname()
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	// comment below when on VM
-	// host = "fa23-cs425-4810.cs.illinois.edu"
-	id, err := config.GetHostID(host)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	// fmt.Println("ID:", id)
+var Tfail = time.Second * 2
+var Tcleanup = time.Second * 4
 
+func main() {
+	host, err := gossip.GetHostname()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
 	// GOROUTINE for receiving UDP packets
 	// GOROUTINE for sending join request
+	var membershipManager = pkg.NewMembershipManager()
 	introducer, err := config.GetIntroducer()
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
-	pkg.InitMembershiplist(host)
-	membershipList := pkg.GetMembershipList()
+	membershipManager.InitMembershiplist(host)
+	membershipList := membershipManager.GetMembershipList()
+	gossip.SetMembershipManager(membershipManager)
+	gossipService := gossip.NewGossipService(membershipManager)
+	gossipService.Test()
 	fmt.Println("Membership List:", membershipList)
 	fmt.Println("Introducer:", introducer)
 	fmt.Println("Host:", host)
+	go gossip.ReceiveUDPRoutine()
 	if introducer != host {
-		go network.SendJoinUDPRoutine(id, "join", time.Now(), introducer)
+		go gossip.SendJoinUDPRoutine(host, "join", introducer)
 	}
-	go network.ReceiveUDPRoutine()
+	<-gossip.GetJoinCompleteCh() // Wait for the join routine to complete
+	go membershipManager.StartFailureDetection(Tfail)
+	go membershipManager.StartCleanupRoutine(Tcleanup)
+	// Start broadcasting after joining is complete
+	// gossip.SendSuspicionBroadcast(host, "EnableSuspicionBroadcast")
+
 	// Wait indefinitely so the main function does not exit prematurely
 	select {}
 }
