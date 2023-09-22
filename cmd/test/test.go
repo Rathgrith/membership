@@ -39,8 +39,8 @@ func main() {
 		go gossip.SendJoinUDPRoutine(host, "join", introducer)
 	}
 	<-gossip.GetJoinCompleteCh() // Wait for the join routine to complete
-	go membershipManager.MarkMembersFailedIfNotUpdated(Tfail)
-	go membershipManager.CleanupFailedMembers(Tcleanup)
+	go membershipManager.StartFailureDetection(Tfail)
+	go membershipManager.StartCleanupRoutine(Tcleanup)
 	// Start broadcasting after joining is complete
 	// gossip.SendSuspicionBroadcast(host, "EnableSuspicionBroadcast")
 

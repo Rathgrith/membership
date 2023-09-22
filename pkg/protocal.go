@@ -195,6 +195,28 @@ func (m *MembershipManager) MarkMembersSuspectedIfNotUpdated(Tfail time.Duration
 		}
 	}
 }
+
+func (m *MembershipManager) StartFailureDetection(Tfail time.Duration) {
+	ticker := time.NewTicker(Tfail)
+	for {
+		select {
+		case <-ticker.C:
+			m.MarkMembersSuspectedIfNotUpdated(Tfail)
+			m.MarkMembersFailedIfNotUpdated(Tfail)
+		}
+	}
+}
+
+func (m *MembershipManager) StartCleanupRoutine(Tcleanup time.Duration) {
+	ticker := time.NewTicker(Tcleanup)
+	for {
+		select {
+		case <-ticker.C:
+			m.CleanupFailedMembers(Tcleanup)
+		}
+	}
+}
+
 func getHostname() string {
 	hostname, err := os.Hostname()
 	if err != nil {
