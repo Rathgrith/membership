@@ -73,6 +73,7 @@ func (m *MembershipManager) OverwriteMembershipList(receivedList map[string]Memb
 	}
 
 	for k, v := range receivedList {
+		v.LocalTime = time.Now()
 		m.membershipList[k] = v
 	}
 }
