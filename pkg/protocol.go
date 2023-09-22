@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"ece428_mp2/pkg/network/code"
 	"fmt"
 	"os"
 	"strings"
@@ -57,7 +58,7 @@ func (m *MembershipManager) InitMembershiplist(hostname string) {
 	m.UpdateOrAddMember(hostname)
 }
 
-func (m *MembershipManager) JoinToMembershipList(request JoinRequest, addr string) {
+func (m *MembershipManager) JoinToMembershipList(request *code.JoinRequest) {
 	m.membershipListLock.Lock()
 	defer m.membershipListLock.Unlock()
 

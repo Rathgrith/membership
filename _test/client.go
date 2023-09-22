@@ -19,14 +19,10 @@ func main() {
 		panic(err)
 	}
 	client := network.NewCallUDPClient()
-	testReq := &test{
-		A: 199,
-		B: "Hello World ghjgjhgjgjhgjh",
-		C: true,
-	}
+	r := code.JoinRequest{Host: "127.0.0.1"}
 	req := &network.CallRequest{
 		MethodName: code.Join,
-		Request:    testReq,
+		Request:    r,
 		TargetHost: "127.0.0.1",
 	}
 	err = client.Call(req)

@@ -9,4 +9,5 @@ const (
 )
 
 type JoinRequest struct {
+	Host string `json:"host"`
 }

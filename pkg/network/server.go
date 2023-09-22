@@ -24,7 +24,7 @@ type CallUDPServer struct {
 	serveCancelFunc context.CancelFunc
 }
 
-type DispatchFunc func(header *code.RequestHeader, reqBody []byte)
+type DispatchFunc func(header *code.RequestHeader, reqBody []byte) error
 
 func NewUDPServer(listenPort int) (*CallUDPServer, error) {
 	return &CallUDPServer{listenPort: listenPort}, nil
@@ -71,7 +71,11 @@ func (s *CallUDPServer) serveUDPRequest(ctx context.Context, dataBuf *bytes.Buff
 	codeHandler := code.HandlerMap[meta.CodeHandlerType]
 	reqHeader, reqBody, err := codeHandler.Read(dataBuf)
 	body := reqBody.([]byte)
-	s.f(reqHeader, body)
+	err = s.f(reqHeader, body)
+	if err != nil {
+		s.errChan <- fmt.Errorf("handle request failed:%w", err)
+		return
+	}
 }
 
 func (s *CallUDPServer) Register(f DispatchFunc) {
