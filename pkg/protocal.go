@@ -145,6 +145,9 @@ func (m *MembershipManager) MarkMembersFailedIfNotUpdated(Tfail time.Duration) {
 	currentTime := time.Now()
 
 	for k, v := range m.membershipList {
+		if k == getHostname() {
+			continue
+		}
 		timeElapsed := currentTime.Sub(v.LocalTime)
 		if timeElapsed > Tfail && v.StatusCode != 2 { // If member is alive or suspected and time elapsed exceeds Tfail
 			v.StatusCode = 2 // Mark as failed
@@ -161,6 +164,9 @@ func (m *MembershipManager) CleanupFailedMembers(Tclean time.Duration) {
 	currentTime := time.Now()
 
 	for k, v := range m.membershipList {
+		if k == getHostname() {
+			continue
+		}
 		timeElapsed := currentTime.Sub(v.LocalTime)
 		if timeElapsed > Tclean && v.StatusCode == 2 { // If member is failed and time elapsed exceeds Tclean
 			fmt.Println("Removing failed member:", k)
