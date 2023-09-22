@@ -1,9 +1,11 @@
 package main
 
 import (
+	"ece428_mp2/config"
 	"ece428_mp2/pkg/logutil"
 	"ece428_mp2/pkg/network"
 	"ece428_mp2/pkg/network/code"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -18,12 +20,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	introducer, _ := config.GetIntroducer()
 	client := network.NewCallUDPClient()
-	r := code.JoinRequest{Host: "127.0.0.1"}
+	r := code.JoinRequest{Host: introducer}
 	req := &network.CallRequest{
 		MethodName: code.Join,
 		Request:    r,
-		TargetHost: "127.0.0.1",
+		TargetHost: introducer,
 	}
 	err = client.Call(req)
 	if err != nil {

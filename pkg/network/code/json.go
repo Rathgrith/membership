@@ -27,13 +27,11 @@ func NewJSONCodeHandler() Handler {
 
 func (J JSONCodeHandler) Read(buffer *bytes.Buffer) (*RequestHeader, RequestBody, error) {
 	header := RequestHeader{}
-	rawHeader := buffer.Next(headerOffset)
-	err := json.Unmarshal(rawHeader, &header)
+	err := binary.Read(buffer, binary.BigEndian, &header)
 	if err != nil {
 		logutil.Logger.Error(err)
 		return nil, nil, fmt.Errorf("parse req header failed:%w", err)
 	}
-	logutil.Logger.Infof("header:%v", header)
 
 	body := buffer.Next(int(header.BodyLength))
 
@@ -51,17 +49,13 @@ func (J JSONCodeHandler) Encode(header *RequestHeader, body RequestBody) ([]byte
 	}
 
 	header.BodyLength = int32(len(rawBody))
-	rawHeader, err := json.Marshal(header)
-	fmt.Println(fmt.Sprintf("header len:%v", len(rawHeader)))
 	if err != nil {
 		return nil, fmt.Errorf("error raised in the header encode:%w", err)
 	}
 
 	buf := bytes.Buffer{}
-	err = binary.Write(&buf, binary.BigEndian, rawHeader)
+	err = binary.Write(&buf, binary.BigEndian, header)
 	err = binary.Write(&buf, binary.BigEndian, rawBody)
-
-	logutil.Logger.Infof(buf.String())
 
 	return buf.Bytes(), err
 }
