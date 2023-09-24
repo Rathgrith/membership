@@ -10,12 +10,14 @@ const (
 	Leave
 	ListMember
 	ListSelf
+	ChangeSuspicion
 )
 
 type MemberStatus int
 
 const (
 	Alive MemberStatus = iota + 1
+	Suspect
 	Failed
 )
 
@@ -25,6 +27,11 @@ type JoinRequest struct {
 
 type ListMemberRequest struct {
 	Host string `json:"host"`
+}
+
+type ChangeSuspicionRequest struct {
+	SuspicionFlag bool      `json:"suspicion_flag"`
+	Timestamp     time.Time `json:"time"`
 }
 
 type ListSelfRequest struct {

@@ -70,8 +70,18 @@ func (s *Service) Serve() {
 	}
 }
 
+func (s *Service) HandleChange(flag bool, timestamp time.Time) {
+	if timestamp.After(s.membershipManager.suspicionTimeStamp) {
+		if flag != s.membershipManager.suspicionTriggered {
+			s.membershipManager.suspicionTriggered = flag
+			s.membershipManager.suspicionTimeStamp = timestamp
+		}
+	}
+	fmt.Println("suspicion flag changed to:", flag)
+}
+
 func (s *Service) HandleJoin(request *code.JoinRequest) {
-	logutil.Logger.Debugf("recieve join requet:%v", request.Host)
+	logutil.Logger.Debugf("receive join request:%v", request.Host)
 	s.membershipManager.JoinToMembershipList(request)
 }
 
@@ -110,6 +120,12 @@ func (s *Service) Handle(header *code.RequestHeader, reqBody []byte) error {
 		if err != nil {
 			return err
 		}
+		if req.UpdateTime.After(s.membershipManager.suspicionTimeStamp) {
+			if req.SuspicionFlag != s.membershipManager.suspicionTriggered {
+				s.membershipManager.suspicionTriggered = req.SuspicionFlag
+				s.membershipManager.suspicionTimeStamp = req.UpdateTime
+			}
+		}
 		s.membershipManager.MergeMembershipList(req.MemberShipList)
 	} else if header.Method == code.ListMember {
 		s.ListMember()
@@ -122,6 +138,13 @@ func (s *Service) Handle(header *code.RequestHeader, reqBody []byte) error {
 			return err
 		}
 		s.ListSelf(s.hostname)
+	} else if header.Method == code.ChangeSuspicion {
+		req := code.ChangeSuspicionRequest{}
+		err := json.Unmarshal(reqBody, &req)
+		if err != nil {
+			return err
+		}
+		s.HandleChange(req.SuspicionFlag, req.Timestamp)
 	}
 
 	return nil

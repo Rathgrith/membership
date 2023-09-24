@@ -16,7 +16,7 @@ func main() {
 	client := network.NewCallUDPClient()
 	r := code.ListMemberRequest{Host: "localhost"}
 	req := &network.CallRequest{
-		MethodName: code.List_member,
+		MethodName: code.ListMember,
 		Request:    r,
 		TargetHost: "localhost",
 	}

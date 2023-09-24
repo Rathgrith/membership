@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ece428_mp2/config"
 	"ece428_mp2/pkg/logutil"
 	"ece428_mp2/pkg/network"
 	"ece428_mp2/pkg/network/code"
@@ -14,7 +15,7 @@ func main() {
 		panic(err)
 	}
 	client := network.NewCallUDPClient()
-	r := code.ListSelfRequest{Host: "123"}
+	r := code.ListSelfRequest{Host: config.GetSelfHostName()}
 	req := &network.CallRequest{
 		MethodName: code.ListSelf,
 		Request:    r,
