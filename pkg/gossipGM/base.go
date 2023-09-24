@@ -52,27 +52,18 @@ func (s *Service) Serve() {
 
 	s.joinToGroup()
 
-	//go s.membershipManager.StartSuspicionDetection(time.Second * 2)
 	heartbeatTicker := time.NewTicker(config.GetTHeartbeat())
-	ticker2 := time.NewTicker(time.Second * 10)
 	for {
 		select {
 		case err := <-errChan:
-			panic(err)
+			logutil.Logger.Errorf(err.Error())
 		case <-heartbeatTicker.C:
 			s.detectionRoutine()
-		case <-ticker2.C:
-			fmt.Println("----------------------------")
-			for k, v := range s.membershipManager.GetMembershipList() {
-				value, _ := json.Marshal(v)
-				logutil.Logger.Debugf("key:%v member:%v", k, string(value))
-			}
-			fmt.Println("----------------------------")
 		}
 	}
 }
 
-func (s *Service) HandleChange(flag bool, timestamp time.Time) {
+func (s *Service) HandleRunModeChange(flag bool, timestamp time.Time) {
 	if timestamp.After(s.membershipManager.suspicionTimeStamp) {
 		if flag == false {
 			s.mode = code.PureGossip
@@ -86,6 +77,10 @@ func (s *Service) HandleChange(flag bool, timestamp time.Time) {
 func (s *Service) HandleJoin(request *code.JoinRequest) {
 	logutil.Logger.Debugf("receive join request:%v", request.Host)
 	s.membershipManager.JoinToMembershipList(request)
+}
+
+func (s *Service) HandleSuspicion(request *code.SuspensionRequest) {
+
 }
 
 func (s *Service) HandleLeave() {
@@ -147,7 +142,7 @@ func (s *Service) Handle(header *code.RequestHeader, reqBody []byte) error {
 		if err != nil {
 			return err
 		}
-		s.HandleChange(req.SuspicionFlag, req.Timestamp)
+		s.HandleRunModeChange(req.SuspicionFlag, req.Timestamp)
 	}
 
 	return nil
@@ -172,7 +167,9 @@ func (s *Service) detectionRoutine() {
 	s.membershipManager.IncrementSelfCounter()
 	selectedNeighbors := s.membershipManager.RandomlySelectKNeighbors(config.GetNumOfGossipPerRound())
 	membershipList := s.membershipManager.GetMembershipList()
-	go s.membershipManager.MarkMembersFailedIfNotUpdated(s.tFail, s.tCleanup)
+	if s.mode == code.PureGossip {
+		go s.membershipManager.MarkMembersFailedIfNotUpdated(s.tFail, s.tCleanup)
+	}
 	r := code.HeartbeatRequest{MemberShipList: membershipList}
 	for _, neighborHost := range selectedNeighbors {
 		req := network.CallRequest{

@@ -11,21 +11,21 @@ import (
 )
 
 type MembershipManager struct {
-	membershipList     map[string]*code.MemberInfo
-	listMutex          sync.RWMutex
-	selfHostName       string
-	selfID             string
-	suspicionTriggered bool
-	suspicionTimeStamp time.Time
+	membershipList map[string]*code.MemberInfo
+	listMutex      sync.RWMutex
+	selfHostName   string
+	selfID         string
+
+	IncarnationNumberTrack map[string]int
+	forwardRequestBuf      []*code.SuspensionRequest
+	mu                     sync.Mutex
 }
 
 func NewMembershipManager(selfHostName string) *MembershipManager {
 	manager := &MembershipManager{
-		membershipList:     make(map[string]*code.MemberInfo),
-		listMutex:          sync.RWMutex{},
-		selfHostName:       selfHostName,
-		suspicionTriggered: false,
-		suspicionTimeStamp: time.Time{},
+		membershipList: make(map[string]*code.MemberInfo),
+		listMutex:      sync.RWMutex{},
+		selfHostName:   selfHostName,
 	}
 
 	manager.initMembershipList()
@@ -149,39 +149,6 @@ func (m *MembershipManager) MarkMembersFailedIfNotUpdated(TFail, TCleanup time.D
 	}
 }
 
-func (m *MembershipManager) MarkMembersSuspectedIfNotUpdated(Tsus time.Duration) {
-	m.listMutex.Lock()
-	defer m.listMutex.Unlock()
-
-	currentTime := time.Now()
-
-	for k, v := range m.membershipList {
-		// if k is current hostname, skip
-		if strings.HasPrefix(k, m.selfHostName) {
-			continue
-		}
-		timeElapsed := currentTime.Sub(v.LocalTime)
-		if timeElapsed > Tsus && v.StatusCode == code.Alive { // If member is alive and time elapsed exceeds Tsus
-			v.StatusCode = code.Suspected // Mark as suspected
-			m.membershipList[k] = v
-			logutil.Logger.Infof("Marking member as suspected: %s", k)
-		}
-
-	}
-}
-
-func (m *MembershipManager) StartSuspicionDetection(Tsus time.Duration) {
-	ticker := time.NewTicker(Tsus)
-	for {
-		select {
-		case <-ticker.C:
-			if m.suspicionTriggered {
-				m.MarkMembersSuspectedIfNotUpdated(Tsus)
-			}
-		}
-	}
-}
-
 func (m *MembershipManager) RandomlySelectKNeighbors(k int) []string {
 	m.listMutex.RLock()
 	defer m.listMutex.RUnlock()
@@ -198,7 +165,7 @@ func (m *MembershipManager) RandomlySelectKNeighbors(k int) []string {
 	for i := 0; i < k && i < len(keys); i++ {
 		key := keys[i]
 		member := m.membershipList[key]
-		if member.Hostname == m.selfHostName || member.StatusCode != code.Alive {
+		if member.Hostname == m.selfHostName || member.StatusCode == code.Failed {
 			continue
 		}
 
@@ -215,22 +182,4 @@ func (m *MembershipManager) StartCleanup(targetKey string, TCleanup time.Duratio
 	delete(m.membershipList, targetKey)
 	m.listMutex.Unlock()
 	logutil.Logger.Infof("cleanup %s", targetKey)
-}
-
-func (m *MembershipManager) EnableSuspicion(requestTime time.Time) {
-	if !m.suspicionTriggered {
-		if requestTime.After(m.suspicionTimeStamp) {
-			m.suspicionTriggered = true
-			m.suspicionTimeStamp = requestTime
-		}
-	}
-}
-
-func (m *MembershipManager) DisableSuspicion(requestTime time.Time) {
-	if m.suspicionTriggered {
-		if requestTime.After(m.suspicionTimeStamp) {
-			m.suspicionTriggered = false
-			m.suspicionTimeStamp = requestTime
-		}
-	}
 }
