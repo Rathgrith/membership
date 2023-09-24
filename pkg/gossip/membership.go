@@ -107,7 +107,7 @@ func (m *MembershipManager) IncrementSelfCounter() {
 	m.listMutex.Lock()
 	defer m.listMutex.Unlock()
 
-	if self, ok := m.membershipList[m.selfHostName]; ok && self.StatusCode == code.Alive {
+	if self, ok := m.membershipList[m.selfID]; ok && self.StatusCode == code.Alive {
 		self.Counter += 1
 	} else {
 		logutil.Logger.Errorf("can not find self member instance or self has been marked as failed")
