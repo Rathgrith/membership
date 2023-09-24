@@ -1,4 +1,4 @@
-package gossip
+package gossipGM
 
 import (
 	"ece428_mp2/pkg/logutil"
@@ -63,7 +63,7 @@ func (m *MembershipManager) MergeMembershipList(receivedMembershipList map[strin
 		}
 
 		if _, ok := m.membershipList[k]; ok {
-			if m.membershipList[k].Counter < v.Counter {
+			if m.membershipList[k].Counter < v.Counter && m.membershipList[k].StatusCode == code.Alive {
 				m.membershipList[k] = v
 				m.membershipList[k].LocalTime = time.Now()
 			}

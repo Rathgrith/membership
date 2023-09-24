@@ -1,4 +1,4 @@
-package gossip
+package gossipGM
 
 import (
 	"ece428_mp2/config"
