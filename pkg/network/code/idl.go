@@ -18,6 +18,7 @@ const (
 	ListMember
 	ListSelf
 	ChangeSuspicion
+	Suspicion
 )
 
 type MemberStatus int

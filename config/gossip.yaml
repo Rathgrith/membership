@@ -11,4 +11,6 @@ fan_out: 3 # determine choose how many neighbor to gossip
 drop_rate: 0
 
 default_suspicion: false
+t_suspect: 3
+t_confirm: 6
 

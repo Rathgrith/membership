@@ -20,6 +20,8 @@ type Service struct {
 	timeStamp time.Time
 	tFail     time.Duration
 	tCleanup  time.Duration
+	tSuspect  time.Duration
+	tConfirm  time.Duration
 }
 
 func NewGossipService() *Service {
@@ -42,6 +44,8 @@ func NewGossipService() *Service {
 		tFail:             config.GetTFail(),
 		tCleanup:          config.GetTCleanup(),
 		mode:              config.GetDefaultRunMode(),
+		tSuspect:          config.GetTSuspect(),
+		tConfirm:          config.GetTConfirm(),
 	}
 	server.Register(service.Handle)
 
@@ -146,6 +150,13 @@ func (s *Service) Handle(header *code.RequestHeader, reqBody []byte) error {
 			return err
 		}
 		s.HandleRunModeChange(req.SuspicionFlag, req.Timestamp)
+	} else if header.Method == code.Suspicion {
+		req := code.SuspensionRequest{}
+		err := json.Unmarshal(reqBody, &req)
+		if err != nil {
+			return err
+		}
+		s.HandleSuspicion(&req)
 	}
 
 	return nil
@@ -168,6 +179,9 @@ func (s *Service) joinToGroup() {
 
 func (s *Service) detectionRoutine() {
 	s.membershipManager.IncrementSelfCounter()
+	if s.mode == code.GossipWithSuspicion {
+		s.membershipManager.MarkMembersSuspectedIfNotUpdated(s.tSuspect, s.tConfirm)
+	}
 	selectedNeighbors := s.membershipManager.RandomlySelectKNeighbors(config.GetNumOfGossipPerRound())
 	membershipList := s.membershipManager.GetMembershipList()
 	flag := false
@@ -178,7 +192,7 @@ func (s *Service) detectionRoutine() {
 	}
 	r := code.HeartbeatRequest{
 		MemberShipList: membershipList,
-		UpdateTime:     time.Now(),
+		UpdateTime:     s.timeStamp,
 		SuspicionFlag:  flag,
 	}
 	for _, neighborHost := range selectedNeighbors {

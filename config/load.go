@@ -19,6 +19,8 @@ const (
 	TCleanupKeyName                 = "t_cleanup"
 	NumOfGossipPerRoundKeyName      = "fan_out"
 	EnableSuspicionByDefaultKeyName = "default_suspicion"
+	TSuspectKeyName                 = "t_suspect"
+	TConfirmKeyName                 = "t_confirm"
 )
 
 func MustLoadGossipFDConfig() {
@@ -41,7 +43,9 @@ func CheckClientConfig() error {
 		!viper.IsSet(TFailKeyName) ||
 		!viper.IsSet(TCleanupKeyName) ||
 		!viper.IsSet(NumOfGossipPerRoundKeyName) ||
-		!viper.IsSet(EnableSuspicionByDefaultKeyName) {
+		!viper.IsSet(EnableSuspicionByDefaultKeyName) ||
+		!viper.IsSet(TSuspectKeyName) ||
+		!viper.IsSet(TConfirmKeyName) {
 		return fmt.Errorf("missing config")
 	}
 
@@ -87,4 +91,12 @@ func GetDefaultRunMode() code.RunMode {
 		return code.GossipWithSuspicion
 	}
 	return code.PureGossip
+}
+
+func GetTSuspect() time.Duration {
+	return time.Second * time.Duration(viper.GetInt(TSuspectKeyName))
+}
+
+func GetTConfirm() time.Duration {
+	return time.Second * time.Duration(viper.GetInt(TConfirmKeyName))
 }

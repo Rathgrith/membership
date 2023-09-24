@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func (m *MembershipManager) MarkMembersSuspectedIfNotUpdated(TSuspicion time.Duration) {
+func (m *MembershipManager) MarkMembersSuspectedIfNotUpdated(TSuspicion time.Duration, TConfirm time.Duration) {
 	m.listMutex.Lock()
 	defer m.listMutex.Unlock()
 
@@ -21,9 +21,11 @@ func (m *MembershipManager) MarkMembersSuspectedIfNotUpdated(TSuspicion time.Dur
 		timeElapsed := currentTime.Sub(v.LocalTime)
 		if timeElapsed > TSuspicion && v.StatusCode == code.Alive { // If member is alive and time elapsed exceeds TSuspicion
 			v.StatusCode = code.Suspected // Mark as suspected
+			v.LocalTime = currentTime
 			m.membershipList[k] = v
 			logutil.Logger.Infof("Marking member as suspected: %s", k)
 			go m.ReportSuspectedMember(k, v)
+			go m.ReadyReportConfirm(k, TConfirm)
 		}
 
 	}
@@ -38,6 +40,18 @@ func (m *MembershipManager) ReportSuspectedMember(memberID string, memberInfo *c
 	m.mu.Lock()
 	suspectRequest.IncarnationNumber = m.IncarnationNumberTrack[memberID]
 	m.forwardRequestBuf = append(m.forwardRequestBuf, &suspectRequest)
+	m.mu.Unlock()
+}
+
+func (m *MembershipManager) ReportConfirmFailedMember(memberID string) {
+	confirmFailedRequest := code.SuspensionRequest{
+		TargetID: memberID,
+		InfoType: code.ConfirmFailed,
+	}
+
+	m.mu.Lock()
+	confirmFailedRequest.IncarnationNumber = m.IncarnationNumberTrack[memberID]
+	m.forwardRequestBuf = append(m.forwardRequestBuf, &confirmFailedRequest)
 	m.mu.Unlock()
 }
 
@@ -69,7 +83,6 @@ func (m *MembershipManager) HandleSuspicionRequest(req *code.SuspensionRequest) 
 		// mark suspected
 		m.listMutex.Lock()
 		m.membershipList[req.TargetID].StatusCode = code.Suspected
-		// go confirm
 		m.listMutex.Unlock()
 	}
 
@@ -99,4 +112,19 @@ func (m *MembershipManager) HandleSuspicionRequest(req *code.SuspensionRequest) 
 	m.mu.Lock()
 	m.forwardRequestBuf = append(m.forwardRequestBuf, req)
 	m.mu.Unlock()
+}
+
+func (m *MembershipManager) ReadyReportConfirm(targetID string, TConfirm time.Duration) {
+	timer := time.NewTimer(TConfirm)
+	<-timer.C
+
+	if m.membershipList[targetID].StatusCode != code.Suspected {
+		return
+	}
+
+	m.listMutex.Lock()
+	delete(m.membershipList, targetID)
+	m.listMutex.Unlock()
+
+	m.ReportConfirmFailedMember(targetID)
 }
