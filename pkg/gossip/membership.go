@@ -14,6 +14,7 @@ type MembershipManager struct {
 	membershipList     map[string]*code.MemberInfo
 	listMutex          sync.RWMutex
 	selfHostName       string
+	selfID             string
 	suspicionTriggered bool
 	suspicionTimeStamp time.Time
 }
@@ -96,6 +97,9 @@ func (m *MembershipManager) updateOrAddMember(hostname string) {
 			StatusCode: code.Alive,
 			Hostname:   hostname,
 		}
+		if host == m.selfHostName {
+			m.selfID = uniqueHostID
+		}
 	}
 }
 
@@ -137,25 +141,6 @@ func (m *MembershipManager) MarkMembersFailedIfNotUpdated(TFail, TCleanup time.D
 			fmt.Println("Mark member as failed:", k)
 			m.membershipList[k] = v
 			go m.StartCleanup(k, TCleanup)
-		}
-	}
-}
-
-func (m *MembershipManager) CleanupFailedMembers(Tclean time.Duration) {
-	m.listMutex.Lock()
-	defer m.listMutex.Unlock()
-
-	currentTime := time.Now()
-
-	for k, v := range m.membershipList {
-		// if the k's prefix is the same as the current host, continue
-		if strings.HasPrefix(k, m.selfHostName) {
-			continue
-		}
-		timeElapsed := currentTime.Sub(v.LocalTime)
-		if timeElapsed > Tclean && v.StatusCode == 2 { // If member is failed and time elapsed exceeds Tclean
-			fmt.Println("Removing failed member:", k)
-			delete(m.membershipList, k)
 		}
 	}
 }
