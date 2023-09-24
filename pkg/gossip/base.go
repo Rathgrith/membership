@@ -6,6 +6,7 @@ import (
 	"ece428_mp2/pkg/network"
 	"ece428_mp2/pkg/network/code"
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -22,7 +23,6 @@ type Service struct {
 func NewGossipService() *Service {
 	selfHost := config.GetSelfHostName()
 	manager := NewMembershipManager(selfHost)
-	logutil.Logger.Debugf("member:%v", manager.membershipList)
 
 	server, err := network.NewUDPServer(config.GetListenPort())
 	if err != nil {
@@ -60,12 +60,12 @@ func (s *Service) Serve() {
 		case <-heartbeatTicker.C:
 			s.detectionRoutine()
 		case <-ticker2.C:
-			logutil.Logger.Debugf("----------------------------")
+			fmt.Println("----------------------------")
 			for k, v := range s.membershipManager.GetMembershipList() {
 				value, _ := json.Marshal(v)
 				logutil.Logger.Debugf("key:%v member:%v", k, string(value))
 			}
-			logutil.Logger.Debugf("----------------------------")
+			fmt.Println("----------------------------")
 		}
 	}
 }

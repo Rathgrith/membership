@@ -142,7 +142,7 @@ func (m *MembershipManager) MarkMembersFailedIfNotUpdated(TFail, TCleanup time.D
 		timeElapsed := currentTime.Sub(v.LocalTime)
 		if timeElapsed > TFail && v.StatusCode != code.Failed { // If member is alive or suspected and time elapsed exceeds Tfail
 			v.StatusCode = code.Failed // Mark as failed
-			logutil.Logger.Infof("Mark member as failed:", k)
+			logutil.Logger.Infof("Mark member as failed:%s last update time:%s", k, v.LocalTime.String())
 			m.membershipList[k] = v
 			go m.StartCleanup(k, TCleanup)
 		}
