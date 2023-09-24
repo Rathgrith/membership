@@ -39,7 +39,7 @@ You can also build your .exe binaries to run the service, where we have make one
   ```shell
   ssh dl58@sftp dl58fa23-cs425-48XX.cs.illinois.edu
   ssh> cd ./go
-  ssh> git clone https://gitlab.engr.illinois.edu/feizes2/ece428_mp1.git
+  ssh> git clone https://gitlab.engr.illinois.edu/dl58/ece428_mp2.git
   ```
   
 - We have made an automatic deployment script `./scripts/deploy.sh` to automate this troublesome process. And you should run this script under `scripts` folder. 
