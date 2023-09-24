@@ -90,7 +90,7 @@ func (m *MembershipManager) updateOrAddMember(hostname string) {
 	if activeDaemonKey == "" {
 		host := hostname
 		timestamp := time.Now()
-		uniqueHostID := host + "-daemon" + timestamp.Format("20060102150405")
+		uniqueHostID := m.generateUniqueHostID(host, timestamp.Format("20060102150405"))
 		m.membershipList[uniqueHostID] = &code.MemberInfo{
 			Counter:    1,
 			LocalTime:  time.Now(),
@@ -101,6 +101,10 @@ func (m *MembershipManager) updateOrAddMember(hostname string) {
 			m.selfID = uniqueHostID
 		}
 	}
+}
+
+func (m *MembershipManager) generateUniqueHostID(hostname string, timestamp string) string {
+	return fmt.Sprintf("%s-daemon%s", hostname, timestamp)
 }
 
 func (m *MembershipManager) IncrementSelfCounter() {
@@ -138,7 +142,7 @@ func (m *MembershipManager) MarkMembersFailedIfNotUpdated(TFail, TCleanup time.D
 		timeElapsed := currentTime.Sub(v.LocalTime)
 		if timeElapsed > TFail && v.StatusCode != code.Failed { // If member is alive or suspected and time elapsed exceeds Tfail
 			v.StatusCode = code.Failed // Mark as failed
-			fmt.Println("Mark member as failed:", k)
+			logutil.Logger.Infof("Mark member as failed:", k)
 			m.membershipList[k] = v
 			go m.StartCleanup(k, TCleanup)
 		}
@@ -212,6 +216,7 @@ func (m *MembershipManager) StartCleanup(targetKey string, TCleanup time.Duratio
 	m.listMutex.Lock()
 	delete(m.membershipList, targetKey)
 	m.listMutex.Unlock()
+	logutil.Logger.Infof("cleanup %s", targetKey)
 }
 
 func (m *MembershipManager) EnableSuspicion(requestTime time.Time) {
