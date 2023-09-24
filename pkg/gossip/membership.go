@@ -5,7 +5,6 @@ import (
 	"ece428_mp2/pkg/network/code"
 	"fmt"
 	"math/rand"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -13,158 +12,107 @@ import (
 
 type MembershipManager struct {
 	membershipList     map[string]*code.MemberInfo
-	membershipListLock sync.RWMutex
+	listMutex          sync.RWMutex
+	selfHostName       string
 	suspicionTriggered bool
 	suspicionTimeStamp time.Time
 }
 
-type Broadcast struct {
-	Host         string
-	PacketType   string
-	BroadcastTTL int
-}
-
-type JoinResponse struct {
-	Host          string
-	PacketType    string
-	PacketOutTime time.Time
-	PacketData    map[string]*code.MemberInfo
-}
-
-func NewMembershipManager() *MembershipManager {
-	return &MembershipManager{
+func NewMembershipManager(selfHostName string) *MembershipManager {
+	manager := &MembershipManager{
 		membershipList:     make(map[string]*code.MemberInfo),
-		membershipListLock: sync.RWMutex{},
-		suspicionTriggered: true,
-		suspicionTimeStamp: time.Now(),
+		listMutex:          sync.RWMutex{},
+		selfHostName:       selfHostName,
+		suspicionTriggered: false,
+		suspicionTimeStamp: time.Time{},
 	}
+
+	manager.initMembershipList()
+
+	return manager
 }
 
-func (m *MembershipManager) InitMembershipList(hostname string) {
-	m.membershipListLock.Lock()
-	defer m.membershipListLock.Unlock()
-
-	m.UpdateOrAddMember(hostname)
+func (m *MembershipManager) initMembershipList() {
+	m.updateOrAddMember(m.selfHostName)
 }
 
 func (m *MembershipManager) JoinToMembershipList(request *code.JoinRequest) {
-	m.membershipListLock.Lock()
-	defer m.membershipListLock.Unlock()
-
-	m.UpdateOrAddMember(request.Host)
-}
-
-func (m *MembershipManager) OverwriteMembershipList(receivedList map[string]*code.MemberInfo) {
-	m.membershipListLock.Lock()
-	defer m.membershipListLock.Unlock()
-
-	for k := range m.membershipList {
-		delete(m.membershipList, k)
-	}
-
-	for k, v := range receivedList {
-		v.LocalTime = time.Now()
-		m.membershipList[k] = v
-	}
-}
-
-func (m *MembershipManager) UpdateLocalTimestampForNode(hostname string) {
-	m.membershipListLock.Lock()
-	defer m.membershipListLock.Unlock()
-
-	for k, v := range m.membershipList {
-		if strings.Contains(k, hostname) && v.StatusCode == 1 {
-			v.LocalTime = time.Now()
-			m.membershipList[k] = v
-			break
-		}
-	}
+	m.updateOrAddMember(request.Host)
 }
 
 func (m *MembershipManager) LeaveFromMembershipList(hostname string) {
-	m.membershipListLock.Lock()
-	defer m.membershipListLock.Unlock()
+	m.listMutex.Lock()
+	defer m.listMutex.Unlock()
 
 	for k, v := range m.membershipList {
-		if strings.Contains(k, hostname) && v.StatusCode == 1 {
-			v.StatusCode = 2
+		if strings.Contains(k, hostname) && v.StatusCode == code.Alive {
+			v.StatusCode = code.Failed
 			m.membershipList[k] = v
 			break
 		}
 	}
 }
 
-// write me a merger function to merge two membership lists
-func (m *MembershipManager) MergeMembershipList(receivedList map[string]*code.MemberInfo) {
-	m.membershipListLock.Lock()
-	defer m.membershipListLock.Unlock()
-	for k, v := range receivedList {
-		if v.StatusCode == 1 {
-			if _, ok := m.membershipList[k]; ok {
-				if m.membershipList[k].Counter < v.Counter {
-					m.membershipList[k] = v
-					m.membershipList[k].LocalTime = time.Now()
-				}
-			} else {
+func (m *MembershipManager) MergeMembershipList(receivedMembershipList map[string]*code.MemberInfo) {
+	m.listMutex.Lock()
+	defer m.listMutex.Unlock()
+	for k, v := range receivedMembershipList {
+		if v.StatusCode != code.Alive {
+			continue
+		}
+
+		if _, ok := m.membershipList[k]; ok {
+			if m.membershipList[k].Counter < v.Counter {
 				m.membershipList[k] = v
 				m.membershipList[k].LocalTime = time.Now()
 			}
+		} else {
+			m.membershipList[k] = v
+			m.membershipList[k].LocalTime = time.Now()
 		}
 	}
 }
 
-func (m *MembershipManager) UpdateOrAddMember(hostname string) {
+func (m *MembershipManager) updateOrAddMember(hostname string) {
+	m.listMutex.Lock()
+	defer m.listMutex.Unlock()
+
 	var activeDaemonKey string
 
 	for k, v := range m.membershipList {
-		if v.Hostname == hostname && v.StatusCode == 1 {
+		if v.Hostname == hostname && v.StatusCode == code.Alive {
 			activeDaemonKey = k
 			break
 		}
 	}
-	if activeDaemonKey != "" {
-		existingMember := m.membershipList[activeDaemonKey]
-		existingMember.Counter += 1
-		existingMember.LocalTime = time.Now()
-		m.membershipList[activeDaemonKey] = existingMember
-	} else {
-		ipAddr := hostname
+
+	if activeDaemonKey == "" {
+		host := hostname
 		timestamp := time.Now()
-		uniqueHostID := ipAddr + "-daemon" + timestamp.Format("20060102150405")
+		uniqueHostID := host + "-daemon" + timestamp.Format("20060102150405")
 		m.membershipList[uniqueHostID] = &code.MemberInfo{
 			Counter:    1,
 			LocalTime:  time.Now(),
-			StatusCode: 1,
+			StatusCode: code.Alive,
 			Hostname:   hostname,
 		}
 	}
 }
 
-func (m *MembershipManager) IncrementMembershipCounter() {
-	m.membershipListLock.Lock()
-	defer m.membershipListLock.Unlock()
+func (m *MembershipManager) IncrementSelfCounter() {
+	m.listMutex.Lock()
+	defer m.listMutex.Unlock()
 
-	for k, v := range m.membershipList {
-		if v.StatusCode == 1 && v.Hostname == getHostname() {
-			v.Counter += 1
-			m.membershipList[k] = v
-		}
+	if self, ok := m.membershipList[m.selfHostName]; ok && self.StatusCode == code.Alive {
+		self.Counter += 1
+	} else {
+		logutil.Logger.Errorf("can not find self member instance or self has been marked as failed")
 	}
-}
-
-func (m *MembershipManager) getPrefixCount(ipPrefix string) int {
-	count := 0
-	for id := range m.membershipList {
-		if strings.HasPrefix(id, ipPrefix) {
-			count++
-		}
-	}
-	return count + 1
 }
 
 func (m *MembershipManager) GetMembershipList() map[string]*code.MemberInfo {
-	m.membershipListLock.RLock()
-	defer m.membershipListLock.RUnlock()
+	m.listMutex.RLock()
+	defer m.listMutex.RUnlock()
 
 	copiedList := make(map[string]*code.MemberInfo)
 	for k, v := range m.membershipList {
@@ -173,34 +121,35 @@ func (m *MembershipManager) GetMembershipList() map[string]*code.MemberInfo {
 	return copiedList
 }
 
-func (m *MembershipManager) MarkMembersFailedIfNotUpdated(Tfail time.Duration) {
-	m.membershipListLock.Lock()
-	defer m.membershipListLock.Unlock()
+func (m *MembershipManager) MarkMembersFailedIfNotUpdated(TFail, TCleanup time.Duration) {
+	m.listMutex.Lock()
+	defer m.listMutex.Unlock()
 
 	currentTime := time.Now()
 
 	for k, v := range m.membershipList {
-		if strings.HasPrefix(k, getHostname()) {
+		if strings.HasPrefix(k, m.selfHostName) {
 			continue
 		}
 		timeElapsed := currentTime.Sub(v.LocalTime)
-		if timeElapsed > Tfail && v.StatusCode != 2 { // If member is alive or suspected and time elapsed exceeds Tfail
-			v.StatusCode = 2 // Mark as failed
-			fmt.Println("Marking member as failed:", k)
+		if timeElapsed > TFail && v.StatusCode != code.Failed { // If member is alive or suspected and time elapsed exceeds Tfail
+			v.StatusCode = code.Failed // Mark as failed
+			fmt.Println("Mark member as failed:", k)
 			m.membershipList[k] = v
+			go m.StartCleanup(k, TCleanup)
 		}
 	}
 }
 
 func (m *MembershipManager) CleanupFailedMembers(Tclean time.Duration) {
-	m.membershipListLock.Lock()
-	defer m.membershipListLock.Unlock()
+	m.listMutex.Lock()
+	defer m.listMutex.Unlock()
 
 	currentTime := time.Now()
 
 	for k, v := range m.membershipList {
 		// if the k's prefix is the same as the current host, continue
-		if strings.HasPrefix(k, getHostname()) {
+		if strings.HasPrefix(k, m.selfHostName) {
 			continue
 		}
 		timeElapsed := currentTime.Sub(v.LocalTime)
@@ -212,14 +161,14 @@ func (m *MembershipManager) CleanupFailedMembers(Tclean time.Duration) {
 }
 
 func (m *MembershipManager) MarkMembersSuspectedIfNotUpdated(Tsus time.Duration) {
-	m.membershipListLock.Lock()
-	defer m.membershipListLock.Unlock()
+	m.listMutex.Lock()
+	defer m.listMutex.Unlock()
 
 	currentTime := time.Now()
 
 	for k, v := range m.membershipList {
-		// if k is currenthostname, return
-		if strings.HasPrefix(k, getHostname()) {
+		// if k is current hostname, skip
+		if strings.HasPrefix(k, m.selfHostName) {
 			continue
 		}
 		timeElapsed := currentTime.Sub(v.LocalTime)
@@ -227,16 +176,6 @@ func (m *MembershipManager) MarkMembersSuspectedIfNotUpdated(Tsus time.Duration)
 			v.StatusCode = 3 // Mark as suspected
 			m.membershipList[k] = v
 			logutil.Logger.Infof("Marking member as suspected: %s", k)
-		}
-	}
-}
-
-func (m *MembershipManager) StartFailureDetection(Tfail time.Duration) {
-	ticker := time.NewTicker(Tfail)
-	for {
-		select {
-		case <-ticker.C:
-			m.MarkMembersFailedIfNotUpdated(Tfail)
 		}
 	}
 }
@@ -254,8 +193,8 @@ func (m *MembershipManager) StartSuspicionDetection(Tsus time.Duration) {
 }
 
 func (m *MembershipManager) RandomlySelectKMembers(k int) map[string]code.MemberInfo {
-	m.membershipListLock.RLock()
-	defer m.membershipListLock.RUnlock()
+	m.listMutex.RLock()
+	defer m.listMutex.RUnlock()
 
 	if len(m.membershipList) < k {
 		selectedMembersMap := make(map[string]code.MemberInfo)
@@ -277,20 +216,17 @@ func (m *MembershipManager) RandomlySelectKMembers(k int) map[string]code.Member
 	selectedMembersMap := make(map[string]code.MemberInfo)
 	for i := 0; i < k; i++ {
 		key := keys[i]
-		selectedMembersMap[key] = *m.membershipList[key] // Dereference the pointer to copy the value
+		selectedMembersMap[key] = *(m.membershipList[key]) // Dereference the pointer to copy the value
 	}
-	// logutil.Logger.Infof("RandomlySelectKMembers: %v", selectedMembersMap)
 	return selectedMembersMap
 }
 
-func (m *MembershipManager) StartCleanupRoutine(Tcleanup time.Duration) {
-	ticker := time.NewTicker(Tcleanup)
-	for {
-		select {
-		case <-ticker.C:
-			m.CleanupFailedMembers(Tcleanup)
-		}
-	}
+func (m *MembershipManager) StartCleanup(targetKey string, TCleanup time.Duration) {
+	timer := time.NewTimer(TCleanup)
+	<-timer.C
+	m.listMutex.Lock()
+	delete(m.membershipList, targetKey)
+	m.listMutex.Unlock()
 }
 
 func (m *MembershipManager) EnableSuspicion(requestTime time.Time) {
@@ -309,12 +245,4 @@ func (m *MembershipManager) DisableSuspicion(requestTime time.Time) {
 			m.suspicionTimeStamp = requestTime
 		}
 	}
-}
-func getHostname() string {
-	hostname, err := os.Hostname()
-	if err != nil {
-		return ""
-	}
-	return hostname
-	// hostname format fa23-cs425-48XX.cs.illinois.edu
 }

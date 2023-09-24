@@ -14,7 +14,7 @@ func main() {
 		panic(err)
 	}
 	client := network.NewCallUDPClient()
-	r := code.List_Self{Host: "123"}
+	r := code.ListSelfRequest{Host: "123"}
 	req := &network.CallRequest{
 		MethodName: code.ListSelf,
 		Request:    r,

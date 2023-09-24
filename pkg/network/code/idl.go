@@ -12,28 +12,34 @@ const (
 	ListSelf
 )
 
+type MemberStatus int
+
+const (
+	Alive MemberStatus = iota + 1
+	Failed
+)
+
 type JoinRequest struct {
 	Host string `json:"host"`
 }
 
-type List_Member struct {
+type ListMemberRequest struct {
 	Host string `json:"host"`
 }
 
-type List_Self struct {
+type ListSelfRequest struct {
 	Host string `json:"host"`
 }
 
-type Leave_Request struct {
+type LeaveRequest struct {
 	Host string `json:"host"`
 }
 
-// Define the structure of member info
 type MemberInfo struct {
-	Counter    int       `json:"counter"`     // Counter for the member
-	LocalTime  time.Time `json:"local_time"`  // Local timestamp
-	StatusCode int       `json:"status_code"` // Status code 1(alive), 2(suspect), 3(failed)
-	Hostname   string    `json:"hostname"`    // The hostname
+	Counter    int          `json:"counter"`     // Counter for the member
+	LocalTime  time.Time    `json:"local_time"`  // Local timestamp
+	StatusCode MemberStatus `json:"status_code"` // Status code 1(alive), 2(suspect), 3(failed)
+	Hostname   string       `json:"hostname"`    // The hostname
 }
 
 type HeartbeatRequest struct {

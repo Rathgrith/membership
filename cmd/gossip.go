@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	config.MustLoadGossipConfig()
+	config.MustLoadGossipFDConfig()
 	err := logutil.InitDefaultLogger(logrus.DebugLevel)
 	if err != nil {
 		panic(err)

@@ -14,7 +14,7 @@ func main() {
 		panic(err)
 	}
 	client := network.NewCallUDPClient()
-	r := code.List_Member{Host: "localhost"}
+	r := code.ListMemberRequest{Host: "localhost"}
 	req := &network.CallRequest{
 		MethodName: code.List_member,
 		Request:    r,

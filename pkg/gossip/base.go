@@ -13,14 +13,18 @@ type Service struct {
 	membershipManager *MembershipManager
 	udpServer         *network.CallUDPServer
 	udpClient         *network.CallUDPClient
+
+	hostname string
+	tFail    time.Duration
+	tCleanup time.Duration
 }
 
 func NewGossipService() *Service {
-	manager := NewMembershipManager()
-	manager.InitMembershipList(getHostname())
+	selfHost := config.GetSelfHostName()
+	manager := NewMembershipManager(selfHost)
 	logutil.Logger.Debugf("member:%v", manager.membershipList)
 
-	server, err := network.NewUDPServer(10088) //TODO: read port from config yaml
+	server, err := network.NewUDPServer(config.GetListenPort())
 	if err != nil {
 		logutil.Logger.Errorf("server boot failed:%v", err)
 		panic(err)
@@ -31,6 +35,9 @@ func NewGossipService() *Service {
 		membershipManager: manager,
 		udpServer:         server,
 		udpClient:         client,
+		hostname:          selfHost,
+		tFail:             config.GetTFail(),
+		tCleanup:          config.GetTCleanup(),
 	}
 	server.Register(service.Handle)
 
@@ -43,11 +50,9 @@ func (s *Service) Serve() {
 
 	s.joinToGroup()
 
-	go s.membershipManager.StartFailureDetection(time.Second * 3) // Assuming Tfail is 2 seconds
-	go s.membershipManager.StartCleanupRoutine(time.Second * 5)   // Assuming Tcleanup is 4 seconds
 	//go s.membershipManager.StartSuspicionDetection(time.Second * 2)
 	heartbeatTicker := time.NewTicker(config.GetTHeartbeat())
-	ticker2 := time.NewTicker(time.Second * 5)
+	ticker2 := time.NewTicker(time.Second * 10)
 	for {
 		select {
 		case err := <-errChan:
@@ -65,13 +70,13 @@ func (s *Service) Serve() {
 	}
 }
 
-func (s *Service) Join(request *code.JoinRequest) {
+func (s *Service) HandleJoin(request *code.JoinRequest) {
 	logutil.Logger.Debugf("recieve join requet:%v", request.Host)
 	s.membershipManager.JoinToMembershipList(request)
 }
 
-func (s *Service) Leave() {
-	s.membershipManager.LeaveFromMembershipList(getHostname())
+func (s *Service) HandleLeave() {
+	s.membershipManager.LeaveFromMembershipList(config.GetSelfHostName())
 }
 
 func (s *Service) ListMember() {
@@ -98,7 +103,7 @@ func (s *Service) Handle(header *code.RequestHeader, reqBody []byte) error {
 		if err != nil {
 			return err
 		}
-		s.Join(&req)
+		s.HandleJoin(&req)
 	} else if header.Method == code.Heartbeat {
 		req := code.HeartbeatRequest{}
 		err := json.Unmarshal(reqBody, &req)
@@ -109,14 +114,14 @@ func (s *Service) Handle(header *code.RequestHeader, reqBody []byte) error {
 	} else if header.Method == code.ListMember {
 		s.ListMember()
 	} else if header.Method == code.Leave {
-		s.Leave()
+		s.HandleLeave()
 	} else if header.Method == code.ListSelf {
 		req := code.HeartbeatRequest{}
 		err := json.Unmarshal(reqBody, &req)
 		if err != nil {
 			return err
 		}
-		s.ListSelf(getHostname())
+		s.ListSelf(s.hostname)
 	}
 
 	return nil
@@ -124,7 +129,7 @@ func (s *Service) Handle(header *code.RequestHeader, reqBody []byte) error {
 
 func (s *Service) joinToGroup() {
 	introducerHost := config.GetIntroducerHost()
-	r := code.JoinRequest{Host: getHostname()}
+	r := code.JoinRequest{Host: s.hostname}
 	req := &network.CallRequest{
 		MethodName: code.Join,
 		Request:    r,
@@ -138,11 +143,12 @@ func (s *Service) joinToGroup() {
 }
 
 func (s *Service) detectionRoutine() {
-	s.membershipManager.IncrementMembershipCounter()
-	list := s.membershipManager.GetMembershipList()
-	l := s.membershipManager.RandomlySelectKMembers(3)
-	r := code.HeartbeatRequest{MemberShipList: list}
-	for _, v := range l {
+	s.membershipManager.IncrementSelfCounter()
+	selectedNeighbors := s.membershipManager.RandomlySelectKMembers(config.GetNumOfGossipPerRound())
+	membershipList := s.membershipManager.GetMembershipList()
+	go s.membershipManager.MarkMembersFailedIfNotUpdated(s.tFail, s.tCleanup)
+	r := code.HeartbeatRequest{MemberShipList: membershipList}
+	for _, v := range selectedNeighbors {
 		req := network.CallRequest{
 			MethodName: code.Heartbeat,
 			Request:    r,
@@ -153,5 +159,4 @@ func (s *Service) detectionRoutine() {
 			logutil.Logger.Errorf("send heartbeat failed:%v, host:%v", err, v.Hostname)
 		}
 	}
-
 }

@@ -1,8 +1,8 @@
 MACHINE_LIST=(
                 "fa23-cs425-4801.cs.illinois.edu"
-#                "fa23-cs425-4802.cs.illinois.edu"
+                "fa23-cs425-4802.cs.illinois.edu"
                 "fa23-cs425-4803.cs.illinois.edu"
-                "fa23-cs425-4804.cs.illinois.edu"
+#               "fa23-cs425-4804.cs.illinois.edu"
 #                "fa23-cs425-4805.cs.illinois.edu"
 #                "fa23-cs425-4806.cs.illinois.edu"
 #                "fa23-cs425-4807.cs.illinois.edu"
@@ -29,5 +29,5 @@ done
 
 for machine_host in ${MACHINE_LIST[*]}
   do
-      ssh ${USER_NAME}@${machine_host} "bash -s" < local_build.sh
+      ssh ${USER_NAME}@${machine_host} "bash -s" < kill.sh
   done
