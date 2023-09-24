@@ -28,6 +28,7 @@ type CallUDPClient struct {
 var nowaitMethod = map[code.MethodType]bool{
 	code.ListSelf:        true,
 	code.ListMember:      true,
+	code.Leave:           true,
 	code.ChangeSuspicion: true,
 	code.Heartbeat:       true,
 	code.Join:            true,
