@@ -2,7 +2,6 @@ package network
 
 import (
 	"bytes"
-	"ece428_mp2/pkg/logutil"
 	"ece428_mp2/pkg/network/code"
 	"encoding/binary"
 	"fmt"
@@ -61,11 +60,10 @@ func (c *CallUDPClient) call(req *CallRequest, targetHost string, nowait bool) e
 	}
 
 	if !nowait {
-		logutil.Logger.Debugf("cache current req:%v", string(encodedReq))
 		return nil
 	}
 
-	logutil.Logger.Debugf("sent all cached req")
+	//logutil.Logger.Debugf("sent all cached req")
 	return worker.sendRequest()
 }
 

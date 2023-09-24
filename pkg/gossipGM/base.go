@@ -81,7 +81,7 @@ func (s *Service) HandleRunModeChange(flag bool, timestamp time.Time) {
 }
 
 func (s *Service) HandleJoin(request *code.JoinRequest) {
-	logutil.Logger.Debugf("receive join request:%v", request.Host)
+	logutil.Logger.Infof("receive join request:%v", request.Host)
 	s.membershipManager.JoinToMembershipList(request)
 }
 
