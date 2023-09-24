@@ -181,18 +181,9 @@ func (m *MembershipManager) StartSuspicionDetection(Tsus time.Duration) {
 	}
 }
 
-func (m *MembershipManager) RandomlySelectKMembers(k int) map[string]code.MemberInfo {
+func (m *MembershipManager) RandomlySelectKNeighbors(k int) []string {
 	m.listMutex.RLock()
 	defer m.listMutex.RUnlock()
-
-	if len(m.membershipList) < k {
-		selectedMembersMap := make(map[string]code.MemberInfo)
-		for key, value := range m.membershipList {
-			selectedMembersMap[key] = *value // Dereference the pointer to copy the value
-		}
-
-		return selectedMembersMap // or handle the case differently, e.g., return all members in the map
-	}
 
 	keys := make([]string, 0, len(m.membershipList))
 	for key := range m.membershipList {
@@ -202,12 +193,18 @@ func (m *MembershipManager) RandomlySelectKMembers(k int) map[string]code.Member
 		keys[i], keys[j] = keys[j], keys[i]
 	})
 
-	selectedMembersMap := make(map[string]code.MemberInfo)
+	selectedNeighbor := make([]string, 0, k)
 	for i := 0; i < k; i++ {
 		key := keys[i]
-		selectedMembersMap[key] = *(m.membershipList[key]) // Dereference the pointer to copy the value
+		member := m.membershipList[key]
+		if member.Hostname == m.selfHostName || member.StatusCode != code.Alive {
+			continue
+		}
+
+		selectedNeighbor = append(selectedNeighbor, member.Hostname)
 	}
-	return selectedMembersMap
+
+	return selectedNeighbor
 }
 
 func (m *MembershipManager) StartCleanup(targetKey string, TCleanup time.Duration) {

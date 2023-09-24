@@ -144,19 +144,19 @@ func (s *Service) joinToGroup() {
 
 func (s *Service) detectionRoutine() {
 	s.membershipManager.IncrementSelfCounter()
-	selectedNeighbors := s.membershipManager.RandomlySelectKMembers(config.GetNumOfGossipPerRound())
+	selectedNeighbors := s.membershipManager.RandomlySelectKNeighbors(config.GetNumOfGossipPerRound())
 	membershipList := s.membershipManager.GetMembershipList()
 	go s.membershipManager.MarkMembersFailedIfNotUpdated(s.tFail, s.tCleanup)
 	r := code.HeartbeatRequest{MemberShipList: membershipList}
-	for _, v := range selectedNeighbors {
+	for _, neighborHost := range selectedNeighbors {
 		req := network.CallRequest{
 			MethodName: code.Heartbeat,
 			Request:    r,
-			TargetHost: v.Hostname,
+			TargetHost: neighborHost,
 		}
 		err := s.udpClient.Call(&req)
 		if err != nil {
-			logutil.Logger.Errorf("send heartbeat failed:%v, host:%v", err, v.Hostname)
+			logutil.Logger.Errorf("send heartbeat failed:%v, host:%v", err, neighborHost)
 		}
 	}
 }
