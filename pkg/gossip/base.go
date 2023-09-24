@@ -7,8 +7,6 @@ import (
 	"ece428_mp2/pkg/network/code"
 	"encoding/json"
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
 type Service struct {
@@ -40,40 +38,22 @@ func NewGossipService() *Service {
 }
 
 func (s *Service) Serve() {
-	err := logutil.InitDefaultLogger(logrus.DebugLevel)
-	if err != nil {
-		panic(err)
-	}
-
 	errChan := s.udpServer.Serve()
-	logutil.Logger.Debug("server started!")
+	logutil.Logger.Debug("start to receive UDP request!")
 
-	introducer, _ := config.GetIntroducer()
-	r := code.JoinRequest{Host: getHostname()}
-	req := &network.CallRequest{
-		MethodName: code.Join,
-		Request:    r,
-		TargetHost: introducer,
-	}
-	err = s.udpClient.Call(req)
-	if err != nil {
-		panic(err)
-	}
-	logutil.Logger.Debug("join started!")
+	s.joinToGroup()
 
 	go s.membershipManager.StartFailureDetection(time.Second * 3) // Assuming Tfail is 2 seconds
 	go s.membershipManager.StartCleanupRoutine(time.Second * 5)   // Assuming Tcleanup is 4 seconds
-	go s.membershipManager.StartSuspicionDetection(time.Second * 2)
-	ticker := time.NewTicker(time.Second * 1)
+	//go s.membershipManager.StartSuspicionDetection(time.Second * 2)
+	heartbeatTicker := time.NewTicker(config.GetTHeartbeat())
 	ticker2 := time.NewTicker(time.Second * 5)
 	for {
 		select {
-		case err = <-errChan:
+		case err := <-errChan:
 			panic(err)
-		case <-ticker.C:
-			{
-				s.GossipRoutine()
-			}
+		case <-heartbeatTicker.C:
+			s.detectionRoutine()
 		case <-ticker2.C:
 			logutil.Logger.Debugf("----------------------------")
 			for k, v := range s.membershipManager.GetMembershipList() {
@@ -142,7 +122,22 @@ func (s *Service) Handle(header *code.RequestHeader, reqBody []byte) error {
 	return nil
 }
 
-func (s *Service) GossipRoutine() {
+func (s *Service) joinToGroup() {
+	introducerHost := config.GetIntroducerHost()
+	r := code.JoinRequest{Host: getHostname()}
+	req := &network.CallRequest{
+		MethodName: code.Join,
+		Request:    r,
+		TargetHost: introducerHost,
+	}
+	err := s.udpClient.Call(req)
+	if err != nil {
+		panic(err)
+	}
+	logutil.Logger.Debug("join request sent")
+}
+
+func (s *Service) detectionRoutine() {
 	s.membershipManager.IncrementMembershipCounter()
 	list := s.membershipManager.GetMembershipList()
 	l := s.membershipManager.RandomlySelectKMembers(3)
