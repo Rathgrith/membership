@@ -15,10 +15,11 @@ type Service struct {
 	udpServer         *network.CallUDPServer
 	udpClient         *network.CallUDPClient
 
-	hostname string
-	mode     code.RunMode
-	tFail    time.Duration
-	tCleanup time.Duration
+	hostname  string
+	mode      code.RunMode
+	timeStamp time.Time
+	tFail     time.Duration
+	tCleanup  time.Duration
 }
 
 func NewGossipService() *Service {
@@ -36,6 +37,7 @@ func NewGossipService() *Service {
 		membershipManager: manager,
 		udpServer:         server,
 		udpClient:         client,
+		timeStamp:         time.Time{},
 		hostname:          selfHost,
 		tFail:             config.GetTFail(),
 		tCleanup:          config.GetTCleanup(),
@@ -64,7 +66,7 @@ func (s *Service) Serve() {
 }
 
 func (s *Service) HandleRunModeChange(flag bool, timestamp time.Time) {
-	if timestamp.After(s.membershipManager.suspicionTimeStamp) {
+	if timestamp.After(s.timeStamp) {
 		if flag == false {
 			s.mode = code.PureGossip
 		} else {
@@ -118,10 +120,11 @@ func (s *Service) Handle(header *code.RequestHeader, reqBody []byte) error {
 		if err != nil {
 			return err
 		}
-		if req.UpdateTime.After(s.membershipManager.suspicionTimeStamp) {
-			if req.SuspicionFlag != s.membershipManager.suspicionTriggered {
-				s.membershipManager.suspicionTriggered = req.SuspicionFlag
-				s.membershipManager.suspicionTimeStamp = req.UpdateTime
+		if req.UpdateTime.After(s.timeStamp) {
+			if req.SuspicionFlag == false {
+				s.mode = code.PureGossip
+			} else {
+				s.mode = code.GossipWithSuspicion
 			}
 		}
 		s.membershipManager.MergeMembershipList(req.MemberShipList)
@@ -167,10 +170,17 @@ func (s *Service) detectionRoutine() {
 	s.membershipManager.IncrementSelfCounter()
 	selectedNeighbors := s.membershipManager.RandomlySelectKNeighbors(config.GetNumOfGossipPerRound())
 	membershipList := s.membershipManager.GetMembershipList()
+	flag := false
 	if s.mode == code.PureGossip {
 		go s.membershipManager.MarkMembersFailedIfNotUpdated(s.tFail, s.tCleanup)
+	} else {
+		flag = true
 	}
-	r := code.HeartbeatRequest{MemberShipList: membershipList}
+	r := code.HeartbeatRequest{
+		MemberShipList: membershipList,
+		UpdateTime:     time.Now(),
+		SuspicionFlag:  flag,
+	}
 	for _, neighborHost := range selectedNeighbors {
 		req := network.CallRequest{
 			MethodName: code.Heartbeat,
