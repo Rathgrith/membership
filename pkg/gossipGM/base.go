@@ -74,12 +74,13 @@ func (s *Service) Serve() {
 
 func (s *Service) HandleChange(flag bool, timestamp time.Time) {
 	if timestamp.After(s.membershipManager.suspicionTimeStamp) {
-		if flag != s.membershipManager.suspicionTriggered {
-			s.membershipManager.suspicionTriggered = flag
-			s.membershipManager.suspicionTimeStamp = timestamp
+		if flag == false {
+			s.mode = code.PureGossip
+		} else {
+			s.mode = code.GossipWithSuspicion
 		}
 	}
-	fmt.Println("suspicion flag changed to:", flag)
+	fmt.Println("suspicion flag changed to:", s.mode)
 }
 
 func (s *Service) HandleJoin(request *code.JoinRequest) {

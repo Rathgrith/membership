@@ -24,7 +24,6 @@ type MemberStatus int
 
 const (
 	Alive MemberStatus = iota + 1
-	Suspect
 	Failed
 	Suspected
 )

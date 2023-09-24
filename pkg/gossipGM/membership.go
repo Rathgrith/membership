@@ -25,7 +25,6 @@ func NewMembershipManager(selfHostName string) *MembershipManager {
 		listMutex:          sync.RWMutex{},
 		selfHostName:       selfHostName,
 		suspicionTriggered: false,
-		// initialzed with an zero time
 		suspicionTimeStamp: time.Time{},
 	}
 
@@ -163,7 +162,7 @@ func (m *MembershipManager) MarkMembersSuspectedIfNotUpdated(Tsus time.Duration)
 		}
 		timeElapsed := currentTime.Sub(v.LocalTime)
 		if timeElapsed > Tsus && v.StatusCode == code.Alive { // If member is alive and time elapsed exceeds Tsus
-			v.StatusCode = code.Suspect // Mark as suspected
+			v.StatusCode = code.Suspected // Mark as suspected
 			m.membershipList[k] = v
 			logutil.Logger.Infof("Marking member as suspected: %s", k)
 		}
