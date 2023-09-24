@@ -1,6 +1,7 @@
 package config
 
 import (
+	"ece428_mp2/pkg/network/code"
 	"fmt"
 	"github.com/spf13/viper"
 	"os"
@@ -11,12 +12,13 @@ const (
 	configFileName = "gossip"
 	configFilePath = "./config"
 
-	ListenPortKeyName          = "listen_port"
-	IntroducerKeyName          = "introducer"
-	THeartbeatKeyName          = "t_heartbeat"
-	TFailKeyName               = "t_fail"
-	TCleanupKeyName            = "t_cleanup"
-	NumOfGossipPerRoundKeyName = "fan_out"
+	ListenPortKeyName               = "listen_port"
+	IntroducerKeyName               = "introducer"
+	THeartbeatKeyName               = "t_heartbeat"
+	TFailKeyName                    = "t_fail"
+	TCleanupKeyName                 = "t_cleanup"
+	NumOfGossipPerRoundKeyName      = "fan_out"
+	EnableSuspicionByDefaultKeyName = "default_suspicion"
 )
 
 func MustLoadGossipFDConfig() {
@@ -38,7 +40,8 @@ func CheckClientConfig() error {
 		!viper.IsSet(THeartbeatKeyName) ||
 		!viper.IsSet(TFailKeyName) ||
 		!viper.IsSet(TCleanupKeyName) ||
-		!viper.IsSet(NumOfGossipPerRoundKeyName) {
+		!viper.IsSet(NumOfGossipPerRoundKeyName) ||
+		!viper.IsSet(EnableSuspicionByDefaultKeyName) {
 		return fmt.Errorf("missing config")
 	}
 
@@ -76,4 +79,12 @@ func GetSelfHostName() string {
 	}
 	return hostname
 	// hostname format fa23-cs425-48XX.cs.illinois.edu
+}
+
+func GetDefaultRunMode() code.RunMode {
+	enableSuspicionByDefault := viper.GetBool(EnableSuspicionByDefaultKeyName)
+	if enableSuspicionByDefault {
+		return code.GossipWithSuspicion
+	}
+	return code.PureGossip
 }

@@ -4,8 +4,11 @@ introducer: fa23-cs425-4801.cs.illinois.edu
 
 t_heartbeat: 1 #seconds
 t_fail: 3 # seconds
-t_cleanup: 5 # seconds
+t_cleanup: 6 # seconds
 
 fan_out: 3 # determine choose how many neighbor to gossip
 
+drop_rate: 0
+
+default_suspicion: false
 

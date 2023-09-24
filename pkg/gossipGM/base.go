@@ -16,6 +16,7 @@ type Service struct {
 	udpClient         *network.CallUDPClient
 
 	hostname string
+	mode     code.RunMode
 	tFail    time.Duration
 	tCleanup time.Duration
 }
@@ -38,6 +39,7 @@ func NewGossipService() *Service {
 		hostname:          selfHost,
 		tFail:             config.GetTFail(),
 		tCleanup:          config.GetTCleanup(),
+		mode:              config.GetDefaultRunMode(),
 	}
 	server.Register(service.Handle)
 

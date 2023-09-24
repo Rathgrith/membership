@@ -2,6 +2,13 @@ package code
 
 import "time"
 
+type RunMode int
+
+const (
+	PureGossip RunMode = iota + 1
+	GossipWithSuspicion
+)
+
 type MethodType int32
 
 const (
@@ -19,6 +26,7 @@ const (
 	Alive MemberStatus = iota + 1
 	Suspect
 	Failed
+	Suspected
 )
 
 type JoinRequest struct {
@@ -53,4 +61,18 @@ type HeartbeatRequest struct {
 	MemberShipList map[string]*MemberInfo `json:"sub_member_ship_list"`
 	SuspicionFlag  bool                   `json:"suspicion_flag"`
 	UpdateTime     time.Time              `json:"update_local_time"`
+}
+
+type SuspensionInfoType int
+
+const (
+	Suspect SuspensionInfoType = iota + 1
+	InformAlive
+	ConfirmFailed
+)
+
+type SuspensionRequest struct {
+	TargetID          string             `json:"target_id"`
+	InfoType          SuspensionInfoType `json:"info_type"`
+	IncarnationNumber int                `json:"incarnation_number"`
 }
