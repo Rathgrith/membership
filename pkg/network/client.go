@@ -27,6 +27,7 @@ type CallUDPClient struct {
 
 var nowaitMethod = map[code.MethodType]bool{
 	code.Heartbeat: true,
+	code.Join:      true,
 }
 
 func NewCallUDPClient() *CallUDPClient {
