@@ -2,6 +2,7 @@ package network
 
 import (
 	"bytes"
+	"ece428_mp2/pkg/logutil"
 	"ece428_mp2/pkg/network/code"
 	"encoding/binary"
 	"fmt"
@@ -24,6 +25,10 @@ type CallUDPClient struct {
 	workerPoolMu sync.Mutex
 }
 
+var nowaitMethod = map[code.MethodType]bool{
+	code.Heartbeat: true,
+}
+
 func NewCallUDPClient() *CallUDPClient {
 	return &CallUDPClient{
 		workers: make(map[string]*udpWorker, defaultCacheSize),
@@ -31,7 +36,7 @@ func NewCallUDPClient() *CallUDPClient {
 }
 
 func (c *CallUDPClient) Call(req *CallRequest) error {
-	return c.call(req, req.TargetHost, true)
+	return c.call(req, req.TargetHost, nowaitMethod[req.MethodName])
 }
 
 func (c *CallUDPClient) call(req *CallRequest, targetHost string, nowait bool) error {
@@ -51,9 +56,11 @@ func (c *CallUDPClient) call(req *CallRequest, targetHost string, nowait bool) e
 	}
 
 	if !nowait {
+		logutil.Logger.Debugf("cache current req:%v", string(encodedReq))
 		return nil
 	}
 
+	logutil.Logger.Debugf("sent all cached req")
 	return worker.sendRequest()
 }
 
