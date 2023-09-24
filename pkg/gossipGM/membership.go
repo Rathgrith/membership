@@ -194,7 +194,7 @@ func (m *MembershipManager) RandomlySelectKNeighbors(k int) []string {
 	})
 
 	selectedNeighbor := make([]string, 0, k)
-	for i := 0; i < k; i++ {
+	for i := 0; i < k && i < len(keys); i++ {
 		key := keys[i]
 		member := m.membershipList[key]
 		if member.Hostname == m.selfHostName || member.StatusCode != code.Alive {
