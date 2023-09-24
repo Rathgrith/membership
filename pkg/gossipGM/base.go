@@ -86,7 +86,7 @@ func (s *Service) HandleJoin(request *code.JoinRequest) {
 }
 
 func (s *Service) HandleSuspicion(request *code.SuspensionRequest) {
-
+	s.membershipManager.HandleSuspicionRequest(request)
 }
 
 func (s *Service) HandleLeave() {

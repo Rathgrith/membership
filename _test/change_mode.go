@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ece428_mp2/config"
 	"ece428_mp2/pkg/logutil"
 	"ece428_mp2/pkg/network"
 	"ece428_mp2/pkg/network/code"
@@ -30,7 +31,7 @@ func main() {
 	req := &network.CallRequest{
 		MethodName: code.ChangeSuspicion,
 		Request:    r,
-		TargetHost: "localhost",
+		TargetHost: config.GetSelfHostName(),
 	}
 	err = client.Call(req)
 	if err != nil {
