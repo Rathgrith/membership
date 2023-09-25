@@ -3,7 +3,7 @@ listen_port: 10088
 introducer: fa23-cs425-4801.cs.illinois.edu
 
 t_heartbeat: 1 #seconds
-t_fail: 4 # seconds
+t_fail: 3 # seconds
 t_cleanup: 5 # seconds
 
 fan_out: 3 # determine choose how many neighbor to gossip
@@ -12,7 +12,7 @@ drop_rate: 0
 
 default_suspicion: false
 t_suspect: 3
-t_confirm: 3
+t_confirm: 5
 
 server_list:
   fa23-cs425-4801.cs.illinois.edu
