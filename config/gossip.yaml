@@ -12,7 +12,7 @@ drop_rate: 0
 
 default_suspicion: false
 t_suspect: 3
-t_confirm: 6
+t_confirm: 3
 
 server_list:
   fa23-cs425-4801.cs.illinois.edu

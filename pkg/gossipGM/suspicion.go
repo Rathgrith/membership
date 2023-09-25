@@ -23,7 +23,7 @@ func (m *MembershipManager) MarkMembersSuspectedIfNotUpdated(TSuspicion time.Dur
 			v.StatusCode = code.Suspected // Mark as suspected
 			v.LocalTime = currentTime
 			m.membershipList[k] = v
-			logutil.Logger.Infof("mark %v as suspected", k)
+			logutil.Logger.Infof("mark %v as suspected, last update time:%v, cur time:%v", k, v.LocalTime, time.Now())
 			go m.ReportSuspectedMember(k, v)
 			go m.ReadyReportConfirm(k, TConfirm)
 		}
