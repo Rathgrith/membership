@@ -93,7 +93,7 @@ func (s *CallUDPServer) Register(f DispatchFunc) {
 
 func (s *CallUDPServer) DropThePackage() bool {
 	rate := config.GetDropRate()
-	randomNumber := rand.Intn(rate)
+	randomNumber := rand.Intn(100)
 	if randomNumber <= rate {
 		return true
 	}
