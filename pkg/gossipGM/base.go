@@ -198,6 +198,7 @@ func (s *Service) detectionRoutine() {
 		UpdateTime:     s.timeStamp,
 		SuspicionFlag:  flag,
 	}
+	logutil.Logger.Infof("heartbeat request:%v", r)
 	for _, neighborHost := range selectedNeighbors {
 		req := network.CallRequest{
 			MethodName: code.Heartbeat,
