@@ -86,7 +86,7 @@ func (s *Service) HandleJoin(request *code.JoinRequest) {
 }
 
 func (s *Service) HandleSuspicion(request *code.SuspensionRequest) {
-	s.membershipManager.HandleSuspicionRequest(request)
+
 }
 
 func (s *Service) HandleLeave() {
@@ -125,11 +125,14 @@ func (s *Service) Handle(header *code.RequestHeader, reqBody []byte) error {
 			return err
 		}
 		if req.UpdateTime.After(s.timeStamp) {
+			logutil.Logger.Infof("update timestamp:%v", req.UpdateTime)
+			logutil.Logger.Infof("update mode:%v", req.SuspicionFlag)
 			if req.SuspicionFlag == false {
 				s.mode = code.PureGossip
 			} else {
 				s.mode = code.GossipWithSuspicion
 			}
+			s.timeStamp = req.UpdateTime
 		}
 		s.membershipManager.MergeMembershipList(req.MemberShipList)
 	} else if header.Method == code.ListMember {
