@@ -26,6 +26,9 @@ func NewMembershipManager(selfHostName string) *MembershipManager {
 		membershipList: make(map[string]*code.MemberInfo),
 		listMutex:      sync.RWMutex{},
 		selfHostName:   selfHostName,
+
+		forwardRequestBuf:      make([]*code.SuspensionRequest, 0),
+		IncarnationNumberTrack: make(map[string]int),
 	}
 
 	manager.initMembershipList()
