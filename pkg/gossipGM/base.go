@@ -152,8 +152,14 @@ func (s *Service) Handle(header *code.RequestHeader, reqBody []byte) error {
 		if err != nil {
 			return err
 		}
-		s.timeStamp = req.Timestamp
-		s.mode = code.GossipWithSuspicion
+		if req.Timestamp.After(s.timeStamp) {
+			s.timeStamp = req.Timestamp
+			if req.SuspicionFlag == false {
+				s.mode = code.PureGossip
+			} else {
+				s.mode = code.GossipWithSuspicion
+			}
+		}
 		s.HandleRunModeChange(req.SuspicionFlag, req.Timestamp)
 	} else if header.Method == code.Suspicion {
 		req := code.SuspensionRequest{}
