@@ -121,7 +121,7 @@ func (m *MembershipManager) ReadyReportConfirm(targetID string, TConfirm time.Du
 	timer := time.NewTimer(TConfirm)
 	<-timer.C
 
-	if m.membershipList[targetID].StatusCode != code.Suspected {
+	if m.membershipList[targetID] == nil || m.membershipList[targetID].StatusCode != code.Suspected {
 		return
 	}
 
