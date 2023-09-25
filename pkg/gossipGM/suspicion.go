@@ -23,7 +23,7 @@ func (m *MembershipManager) MarkMembersSuspectedIfNotUpdated(TSuspicion time.Dur
 			v.StatusCode = code.Suspected // Mark as suspected
 			v.LocalTime = currentTime
 			m.membershipList[k] = v
-			logutil.Logger.Infof("Marking member as suspected: %s", k)
+			logutil.Logger.Infof("mark %v as suspected", k)
 			go m.ReportSuspectedMember(k, v)
 			go m.ReadyReportConfirm(k, TConfirm)
 		}
@@ -84,17 +84,19 @@ func (m *MembershipManager) HandleSuspicionRequest(req *code.SuspensionRequest) 
 		m.listMutex.Lock()
 		m.membershipList[req.TargetID].StatusCode = code.Suspected
 		m.listMutex.Unlock()
+		logutil.Logger.Infof("mark %v as suspected", req.TargetID)
 	}
 
 	if req.InfoType == code.InformAlive {
-		if m.IncarnationNumberTrack[req.TargetID] > req.IncarnationNumber {
+		if m.IncarnationNumberTrack[req.TargetID] >= req.IncarnationNumber {
 			return
 		}
 
 		// mark alive
 		m.listMutex.Lock()
-		m.membershipList[req.TargetID].StatusCode = code.Suspected
+		m.membershipList[req.TargetID].StatusCode = code.Alive
 		m.listMutex.Unlock()
+		logutil.Logger.Infof("mark %v as alive", req.TargetID)
 	}
 
 	if req.InfoType == code.ConfirmFailed {
@@ -106,6 +108,7 @@ func (m *MembershipManager) HandleSuspicionRequest(req *code.SuspensionRequest) 
 		m.listMutex.Lock()
 		delete(m.membershipList, req.TargetID)
 		m.listMutex.Unlock()
+		logutil.Logger.Infof("mark %v as failed", req.TargetID)
 	}
 
 	m.IncarnationNumberTrack[req.TargetID] = req.IncarnationNumber
@@ -127,4 +130,13 @@ func (m *MembershipManager) ReadyReportConfirm(targetID string, TConfirm time.Du
 	m.listMutex.Unlock()
 
 	m.ReportConfirmFailedMember(targetID)
+}
+
+func (m *MembershipManager) GetAllForwardSuspicionRequest() []*code.SuspensionRequest {
+	m.mu.Lock()
+	ret := make([]*code.SuspensionRequest, len(m.forwardRequestBuf))
+	copy(ret, m.forwardRequestBuf)
+	m.forwardRequestBuf = make([]*code.SuspensionRequest, 0)
+	m.mu.Unlock()
+	return ret
 }

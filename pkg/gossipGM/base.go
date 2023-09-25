@@ -22,6 +22,8 @@ type Service struct {
 	tCleanup  time.Duration
 	tSuspect  time.Duration
 	tConfirm  time.Duration
+
+	heartbeatCounter int
 }
 
 func NewGossipService() *Service {
@@ -86,7 +88,7 @@ func (s *Service) HandleJoin(request *code.JoinRequest) {
 }
 
 func (s *Service) HandleSuspicion(request *code.SuspensionRequest) {
-
+	s.membershipManager.HandleSuspicionRequest(request)
 }
 
 func (s *Service) HandleLeave() {
@@ -106,6 +108,7 @@ func (s *Service) ListSelf(hostname string) {
 	for k, v := range s.membershipManager.GetMembershipList() {
 		if v.Hostname == hostname {
 			logutil.Logger.Infof("//////////current member ID: %v", k)
+			logutil.Logger.Infof("current heartbeat counter: %v", s.heartbeatCounter)
 		}
 	}
 }
@@ -190,10 +193,12 @@ func (s *Service) joinToGroup() {
 
 func (s *Service) detectionRoutine() {
 	s.membershipManager.IncrementSelfCounter()
+	selectedNeighbors := s.membershipManager.RandomlySelectKNeighbors(config.GetNumOfGossipPerRound())
+	var forwardRequests []*code.SuspensionRequest
 	if s.mode == code.GossipWithSuspicion {
 		s.membershipManager.MarkMembersSuspectedIfNotUpdated(s.tSuspect, s.tConfirm)
+		forwardRequests = s.membershipManager.GetAllForwardSuspicionRequest()
 	}
-	selectedNeighbors := s.membershipManager.RandomlySelectKNeighbors(config.GetNumOfGossipPerRound())
 	membershipList := s.membershipManager.GetMembershipList()
 	flag := false
 	if s.mode == code.PureGossip {
@@ -207,6 +212,17 @@ func (s *Service) detectionRoutine() {
 		SuspicionFlag:  flag,
 	}
 	for _, neighborHost := range selectedNeighbors {
+		for _, fr := range forwardRequests {
+			req := network.CallRequest{
+				MethodName: code.Suspicion,
+				Request:    fr,
+				TargetHost: neighborHost,
+			}
+			err := s.udpClient.Call(&req)
+			if err != nil {
+				logutil.Logger.Errorf("forward Suspicion failed:%v, host:%v", err, neighborHost)
+			}
+		}
 		req := network.CallRequest{
 			MethodName: code.Heartbeat,
 			Request:    r,
@@ -217,4 +233,5 @@ func (s *Service) detectionRoutine() {
 			logutil.Logger.Errorf("send heartbeat failed:%v, host:%v", err, neighborHost)
 		}
 	}
+	s.heartbeatCounter++
 }

@@ -20,11 +20,11 @@ go build -o ${EXECUTE_NAME} ${TARGET_PATH}/${TARGET_FILE_NAME}.go  && \
 echo "source file built successfully!"
 
 # Make sure there are no older versions of programs running in the VM, and then execute the target program in the background.
-PID=`pgrep ${EXECUTE_NAME}`
-if [ "${PID}" != "" ]; then
-  pkill ${EXECUTE_NAME}
-fi
-touch ${OUTPUT} && \
-nohup ./${EXECUTE_NAME} > ./${OUTPUT} 2>&1 &
+#PID=`pgrep ${EXECUTE_NAME}`
+#if [ "${PID}" != "" ]; then
+#  pkill ${EXECUTE_NAME}
+#fi
+#touch ${OUTPUT} && \
+#nohup ./${EXECUTE_NAME} > ./${OUTPUT} 2>&1 &
 
 exit 0
