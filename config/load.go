@@ -100,3 +100,22 @@ func GetTSuspect() time.Duration {
 func GetTConfirm() time.Duration {
 	return time.Second * time.Duration(viper.GetInt(TConfirmKeyName))
 }
+
+const (
+	cliConfigName     = "cli"
+	ServerListKeyName = "server_list"
+)
+
+func MustLoadClientConfig() {
+	viper.SetConfigName(cliConfigName)
+	viper.AddConfigPath("./config")
+
+	if err := viper.ReadInConfig(); err != nil {
+		panic("can not load config of client")
+	}
+
+}
+
+func GetServerList() []string {
+	return viper.GetStringSlice(ServerListKeyName)
+}
