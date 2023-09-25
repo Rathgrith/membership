@@ -11,13 +11,12 @@ import (
 )
 
 func main() {
-	config.MustLoadClientConfig()
 	config.MustLoadGossipFDConfig()
 	serverList := config.GetServerList()
 	var command string
 	var target int
 	flag.StringVar(&command, "c", "", "determine command name")
-	flag.IntVar(&target, "t", 0, "determine command name")
+	flag.IntVar(&target, "t", 0, "determine command target")
 	flag.Parse()
 
 	err := logutil.InitDefaultLogger(logrus.DebugLevel)
