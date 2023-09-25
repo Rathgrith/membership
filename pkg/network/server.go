@@ -3,9 +3,11 @@ package network
 import (
 	"bytes"
 	"context"
+	"ece428_mp2/config"
 	"ece428_mp2/pkg/logutil"
 	"ece428_mp2/pkg/network/code"
 	"fmt"
+	"math/rand"
 	"net"
 )
 
@@ -68,6 +70,11 @@ func (s *CallUDPServer) serveUDPRequest(ctx context.Context, dataBuf *bytes.Buff
 		return
 	}
 
+	if s.DropThePackage() {
+		logutil.Logger.Infof("Drop current UDP package")
+		return
+	}
+
 	codeHandler := code.HandlerMap[meta.CodeHandlerType]
 	for dataBuf.Len() > 0 {
 		reqHeader, reqBody, err := codeHandler.Read(dataBuf)
@@ -82,4 +89,13 @@ func (s *CallUDPServer) serveUDPRequest(ctx context.Context, dataBuf *bytes.Buff
 
 func (s *CallUDPServer) Register(f DispatchFunc) {
 	s.f = f
+}
+
+func (s *CallUDPServer) DropThePackage() bool {
+	rate := config.GetDropRate()
+	randomNumber := rand.Intn(rate)
+	if randomNumber <= rate {
+		return true
+	}
+	return false
 }

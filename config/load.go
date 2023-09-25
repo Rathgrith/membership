@@ -22,6 +22,7 @@ const (
 	TSuspectKeyName                 = "t_suspect"
 	TConfirmKeyName                 = "t_confirm"
 	ServerListKeyName               = "server_list"
+	DropRateKeyName                 = "drop_rate"
 )
 
 func MustLoadGossipFDConfig() {
@@ -46,7 +47,9 @@ func CheckClientConfig() error {
 		!viper.IsSet(NumOfGossipPerRoundKeyName) ||
 		!viper.IsSet(EnableSuspicionByDefaultKeyName) ||
 		!viper.IsSet(TSuspectKeyName) ||
-		!viper.IsSet(TConfirmKeyName) {
+		!viper.IsSet(TConfirmKeyName) ||
+		!viper.IsSet(ServerListKeyName) ||
+		!viper.IsSet(DropRateKeyName) {
 		return fmt.Errorf("missing config")
 	}
 
@@ -104,4 +107,8 @@ func GetTConfirm() time.Duration {
 
 func GetServerList() []string {
 	return viper.GetStringSlice(ServerListKeyName)
+}
+
+func GetDropRate() int {
+	return viper.GetInt(DropRateKeyName)
 }
