@@ -128,7 +128,7 @@ func (m *MembershipManager) ReadyReportConfirm(targetID string, TConfirm time.Du
 	m.listMutex.Lock()
 	delete(m.membershipList, targetID)
 	m.listMutex.Unlock()
-
+	logutil.Logger.Infof("mark %v as failed", targetID)
 	m.ReportConfirmFailedMember(targetID)
 }
 
