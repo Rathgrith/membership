@@ -100,7 +100,7 @@ func (m *MembershipManager) HandleSuspicionRequest(req *code.SuspensionRequest) 
 	}
 
 	if req.InfoType == code.ConfirmFailed {
-		if m.IncarnationNumberTrack[req.TargetID] > req.IncarnationNumber {
+		if m.IncarnationNumberTrack[req.TargetID] >= req.IncarnationNumber {
 			return
 		}
 
@@ -133,8 +133,8 @@ func (m *MembershipManager) ReadyReportConfirm(targetID string, TConfirm time.Du
 }
 
 func (m *MembershipManager) GetAllForwardSuspicionRequest() []*code.SuspensionRequest {
-	m.mu.Lock()
 	ret := make([]*code.SuspensionRequest, len(m.forwardRequestBuf))
+	m.mu.Lock()
 	copy(ret, m.forwardRequestBuf)
 	m.forwardRequestBuf = make([]*code.SuspensionRequest, 0)
 	m.mu.Unlock()
