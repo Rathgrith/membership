@@ -8,7 +8,7 @@ t_cleanup: 5 # seconds
 
 fan_out: 3 # determine choose how many neighbor to gossip
 
-drop_rate: 0
+drop_rate: 3
 
 default_suspicion: false
 t_suspect: 3
