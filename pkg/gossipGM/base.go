@@ -178,9 +178,14 @@ func (s *Service) Handle(header *code.RequestHeader, reqBody []byte) error {
 
 func (s *Service) joinToGroup() {
 	introducerHost := config.GetIntroducerHost()
-	r := code.JoinRequest{Host: s.hostname}
+	list := s.membershipManager.GetMembershipList()
+	r := code.HeartbeatRequest{
+		MemberShipList: list,
+		SuspicionFlag:  false,
+		UpdateTime:     time.Time{},
+	}
 	req := &network.CallRequest{
-		MethodName: code.Join,
+		MethodName: code.Heartbeat,
 		Request:    r,
 		TargetHost: introducerHost,
 	}

@@ -81,28 +81,24 @@ func (m *MembershipManager) updateOrAddMember(hostname string) {
 	m.listMutex.Lock()
 	defer m.listMutex.Unlock()
 
-	var activeDaemonKey string
-
 	for k, v := range m.membershipList {
 		if v.Hostname == hostname && v.StatusCode == code.Alive {
-			activeDaemonKey = k
+			delete(m.membershipList, k)
 			break
 		}
 	}
 
-	if activeDaemonKey == "" {
-		host := hostname
-		timestamp := time.Now()
-		uniqueHostID := m.generateUniqueHostID(host, timestamp.Format("20060102150405"))
-		m.membershipList[uniqueHostID] = &code.MemberInfo{
-			Counter:    1,
-			LocalTime:  time.Now(),
-			StatusCode: code.Alive,
-			Hostname:   hostname,
-		}
-		if host == m.selfHostName {
-			m.selfID = uniqueHostID
-		}
+	host := hostname
+	timestamp := time.Now()
+	uniqueHostID := m.generateUniqueHostID(host, timestamp.Format("20060102150405"))
+	m.membershipList[uniqueHostID] = &code.MemberInfo{
+		Counter:    1,
+		LocalTime:  time.Now(),
+		StatusCode: code.Alive,
+		Hostname:   hostname,
+	}
+	if host == m.selfHostName {
+		m.selfID = uniqueHostID
 	}
 }
 

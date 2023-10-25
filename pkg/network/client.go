@@ -40,7 +40,7 @@ func NewCallUDPClient() *CallUDPClient {
 }
 
 func (c *CallUDPClient) Call(req *CallRequest) error {
-	return c.call(req, req.TargetHost, nowaitMethod[req.MethodName])
+	return c.call(req, req.TargetHost, true)
 }
 
 func (c *CallUDPClient) call(req *CallRequest, targetHost string, nowait bool) error {

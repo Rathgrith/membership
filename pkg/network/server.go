@@ -78,11 +78,17 @@ func (s *CallUDPServer) serveUDPRequest(ctx context.Context, dataBuf *bytes.Buff
 	codeHandler := code.HandlerMap[meta.CodeHandlerType]
 	for dataBuf.Len() > 0 {
 		reqHeader, reqBody, err := codeHandler.Read(dataBuf)
-		body := reqBody.([]byte)
+		if err != nil {
+			continue
+		}
+		body, ok := reqBody.([]byte)
+		if !ok {
+			continue
+		}
 		err = s.f(reqHeader, body)
 		if err != nil {
-			s.errChan <- fmt.Errorf("handle request failed:%w", err)
-			return
+			//s.errChan <- fmt.Errorf("handle request failed:%w, string body:%v", err, string(body))
+			continue
 		}
 	}
 }

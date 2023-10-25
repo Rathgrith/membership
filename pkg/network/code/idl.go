@@ -58,9 +58,9 @@ type MemberInfo struct {
 }
 
 type HeartbeatRequest struct {
-	MemberShipList map[string]*MemberInfo `json:"sub_member_ship_list"`
+	MemberShipList map[string]*MemberInfo `json:"member_ship_list"`
 	SuspicionFlag  bool                   `json:"suspicion_flag"`
-	UpdateTime     time.Time              `json:"update_local_time"`
+	UpdateTime     time.Time              `json:"update_time"`
 }
 
 type SuspensionInfoType int
