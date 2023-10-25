@@ -6,7 +6,6 @@ import (
 	"ece428_mp2/pkg/network"
 	"ece428_mp2/pkg/network/code"
 	"encoding/json"
-	"fmt"
 	"time"
 )
 
@@ -79,7 +78,7 @@ func (s *Service) HandleRunModeChange(flag bool, timestamp time.Time) {
 			s.mode = code.GossipWithSuspicion
 		}
 	}
-	fmt.Println("suspicion flag changed to:", s.mode)
+	logutil.Logger.Infof("suspicion flag changed to:%v", s.mode)
 }
 
 func (s *Service) HandleJoin(request *code.JoinRequest) {
@@ -107,7 +106,7 @@ func (s *Service) ListSelf(hostname string) {
 	logutil.Logger.Infof("Listing self........................")
 	for k, v := range s.membershipManager.GetMembershipList() {
 		if v.Hostname == hostname {
-			logutil.Logger.Infof("//////////current member ID: %v", k)
+			logutil.Logger.Infof("current member ID: %v", k)
 			logutil.Logger.Infof("current heartbeat counter: %v", s.heartbeatCounter)
 		}
 	}
