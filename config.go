@@ -22,10 +22,10 @@ type GossipGMConfig struct {
 func GetDefaultGossipGMConfig() *GossipGMConfig {
 	config := GossipGMConfig{
 		ListenPort:  10088,
-		THeartbeat:  2 * time.Second,
-		TFail:       6 * time.Second,
-		TCleanup:    5 * time.Second,
-		OutPerRound: 3,
+		THeartbeat:  1500 * time.Millisecond,
+		TFail:       5 * time.Second,
+		TCleanup:    6 * time.Second,
+		OutPerRound: 4,
 		Mode:        code.PureGossip,
 	}
 
