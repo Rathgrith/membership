@@ -3,7 +3,6 @@ package gossipGM
 import (
 	"ece428_mp2/pkg/logutil"
 	"ece428_mp2/pkg/network/code"
-	"fmt"
 	"math/rand"
 	"strings"
 	"sync"
@@ -82,7 +81,8 @@ func (m *MembershipManager) MergeMembershipList(receivedMembershipList map[strin
 }
 
 func (m *MembershipManager) generateUniqueHostID(hostname string, timestamp string) string {
-	return fmt.Sprintf("%s-daemon%s", hostname, timestamp)
+	return hostname
+	//return fmt.Sprintf("%s-daemon%s", hostname, timestamp)
 }
 
 func (m *MembershipManager) IncrementSelfCounter() {
