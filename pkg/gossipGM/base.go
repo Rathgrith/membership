@@ -57,7 +57,7 @@ func NewGossipService() *Service {
 	}
 	service.initHandleFunc()
 	server.Register(service.Handle)
-	network.CleanUDPReceiveBuffer()
+	//network.CleanUDPReceiveBuffer()
 
 	return &service
 }
