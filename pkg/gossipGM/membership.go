@@ -75,6 +75,7 @@ func (m *MembershipManager) MergeMembershipList(receivedMembershipList map[strin
 				m.membershipList[k].LocalUpdateTime = time.Now()
 			}
 		} else { // add
+			logutil.Logger.Debugf("add %v to membership list", k)
 			m.membershipList[k] = v
 			m.membershipList[k].LocalUpdateTime = time.Now()
 		}

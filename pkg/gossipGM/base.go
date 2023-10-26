@@ -65,6 +65,7 @@ func (s *Service) Serve() {
 	errChan := s.udpServer.Serve()
 	logutil.Logger.Debug("start to receive UDP request!")
 
+	s.HandleListMember(nil)
 	s.joinToGroup()
 
 	heartbeatTicker := time.NewTicker(config.GetTHeartbeat())
