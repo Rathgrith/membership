@@ -95,6 +95,7 @@ func (s *Service) HandleHeartbeat(reqBody []byte) error {
 		s.runModeMutex.RUnlock()
 	}
 
+	logutil.Logger.Debugf("received membership list:%v", req.MemberShipList)
 	s.membershipManager.MergeMembershipList(req.MemberShipList)
 
 	return nil
