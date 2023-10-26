@@ -30,7 +30,6 @@ var nowaitMethod = map[code.MethodType]bool{
 	code.Leave:           true,
 	code.ChangeSuspicion: true,
 	code.Heartbeat:       true,
-	code.Join:            true,
 }
 
 func NewCallUDPClient() *CallUDPClient {
