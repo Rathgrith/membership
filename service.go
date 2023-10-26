@@ -176,7 +176,9 @@ func (s *Service) pureGossipRoutine() {
 	go func() {
 		failedMemberHost := s.membershipManager.MarkMembersFailedIfNotUpdated(s.tFail, s.tCleanup)
 		for _, host := range failedMemberHost {
-			s.failNotifyChan <- host
+			if s.interestFailHost[host] {
+				s.failNotifyChan <- host
+			}
 		}
 	}()
 	s.heartbeat(membershipList, selectedNeighbors, nil)
