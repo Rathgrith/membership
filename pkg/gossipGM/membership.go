@@ -64,7 +64,6 @@ func (m *MembershipManager) LeaveFromMembershipList(hostname string) {
 func (m *MembershipManager) MergeMembershipList(receivedMembershipList map[string]*code.MemberInfo) {
 	m.listMutex.Lock()
 	defer m.listMutex.Unlock()
-	curTime := time.Now()
 	for k, v := range receivedMembershipList {
 		if v.StatusCode != code.Alive {
 			continue
@@ -76,7 +75,6 @@ func (m *MembershipManager) MergeMembershipList(receivedMembershipList map[strin
 				m.membershipList[k].LocalUpdateTime = time.Now()
 			}
 		} else { // add
-			logutil.Logger.Debugf("add %v to membership list, t:%v", k, curTime.Unix())
 			m.membershipList[k] = v
 			m.membershipList[k].LocalUpdateTime = time.Now()
 		}

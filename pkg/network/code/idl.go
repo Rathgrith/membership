@@ -56,6 +56,7 @@ type HeartbeatRequest struct {
 	MemberShipList map[string]*MemberInfo `json:"member_ship_list"`
 	Mode           RunMode                `json:"mode"`
 	ModeChangeTime int64                  `json:"mode_change_time"`
+	SentTimeStamp  int64                  `json:"sent_time_stamp"`
 }
 
 type SuspensionInfoType int

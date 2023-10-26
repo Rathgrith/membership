@@ -96,7 +96,7 @@ func (s *Service) HandleHeartbeat(reqBody []byte) error {
 		s.runModeMutex.RUnlock()
 	}
 
-	//logutil.Logger.Debugf("received membership list:%v", req.MemberShipList)
+	logutil.Logger.Debugf("received membership list:%v, sent time:%v", req.MemberShipList, req.SentTimeStamp)
 	s.membershipManager.MergeMembershipList(req.MemberShipList)
 
 	return nil
@@ -177,6 +177,7 @@ func (s *Service) heartbeat(membershipList map[string]*code.MemberInfo,
 		MemberShipList: membershipList,
 		Mode:           s.mode,
 		ModeChangeTime: s.modeUpdateTimestamp,
+		SentTimeStamp:  time.Now().Unix(),
 	}
 
 	for _, neighborHost := range hostsOfTargets {
