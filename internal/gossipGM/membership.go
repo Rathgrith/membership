@@ -1,8 +1,8 @@
 package gossipGM
 
 import (
-	"ece428_mp2/pkg/logutil"
-	"ece428_mp2/pkg/network/code"
+	"ece428_mp2/internal/logutil"
+	"ece428_mp2/internal/network/code"
 	"math/rand"
 	"strings"
 	"sync"

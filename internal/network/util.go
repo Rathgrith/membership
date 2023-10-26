@@ -4,6 +4,7 @@ import (
 	"ece428_mp2/config"
 	"fmt"
 	"net"
+	"os"
 )
 
 func CleanUDPReceiveBuffer() {
@@ -18,4 +19,13 @@ func CleanUDPReceiveBuffer() {
 
 	var data [1024]byte
 	fmt.Println(listen.ReadFromUDP(data[:]))
+}
+
+func GetSelfHostName() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return ""
+	}
+	return hostname
+	// hostname format fa23-cs425-48XX.cs.illinois.edu
 }

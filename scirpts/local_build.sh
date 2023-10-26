@@ -1,10 +1,10 @@
 PROJECT_NAME="ece428_mp2"
 BRANCH="master"
 TARGET_FILE_NAME="gossip"
-TARGET_PATH="./cmd"
+TARGET_PATH="./cmd/service"
 FOLDER_NAME=${PROJECT_NAME}
 OUTPUT="execution_out"
-EXECUTE_NAME="gossip_service"
+EXECUTE_NAME="gossipGM_service"
 
 cd ~/go
 

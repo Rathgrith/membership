@@ -1,10 +1,10 @@
-package gossipGM
+package ece428_mp2
 
 import (
-	"ece428_mp2/config"
-	"ece428_mp2/pkg/logutil"
-	"ece428_mp2/pkg/network"
-	"ece428_mp2/pkg/network/code"
+	"ece428_mp2/internal/gossipGM"
+	"ece428_mp2/internal/logutil"
+	"ece428_mp2/internal/network"
+	"ece428_mp2/internal/network/code"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -14,7 +14,7 @@ import (
 type ServiceHandleFunc func(reqBody []byte) error
 
 type Service struct {
-	membershipManager *MembershipManager
+	membershipManager *gossipGM.MembershipManager
 	udpServer         *network.CallUDPServer
 	udpClient         *network.CallUDPClient
 	handleFuncMap     map[code.MethodType]ServiceHandleFunc
@@ -23,22 +23,24 @@ type Service struct {
 	mode                code.RunMode
 	modeUpdateTimestamp int64
 	runModeMutex        sync.RWMutex
+	tHeartbeat          time.Duration
 	tFail               time.Duration
 	tCleanup            time.Duration
-	tSuspect            time.Duration
-	tConfirm            time.Duration
+	FanOut              int
+
+	tSuspect time.Duration
+	tConfirm time.Duration
 
 	heartbeatCounter int
 }
 
-func NewGossipService() *Service {
-	selfHost := config.GetSelfHostName()
-	manager := NewMembershipManager(selfHost)
+func NewGossipGMService(gmConfig *GossipGMConfig) (*Service, error) {
+	selfHost := network.GetSelfHostName()
+	manager := gossipGM.NewMembershipManager(selfHost)
 
-	server, err := network.NewUDPServer(config.GetListenPort())
+	server, err := network.NewUDPServer(gmConfig.ListenPort)
 	if err != nil {
-		logutil.Logger.Errorf("server boot failed:%v", err)
-		panic(err)
+		return nil, fmt.Errorf("server boot failed:%w", err)
 	}
 	client := network.NewCallUDPClient()
 
@@ -47,40 +49,21 @@ func NewGossipService() *Service {
 		udpServer:           server,
 		udpClient:           client,
 		hostname:            selfHost,
-		tFail:               config.GetTFail(),
-		tCleanup:            config.GetTCleanup(),
-		mode:                config.GetDefaultRunMode(),
+		tHeartbeat:          gmConfig.THeartbeat,
+		tFail:               gmConfig.TFail,
+		tCleanup:            gmConfig.TCleanup,
+		FanOut:              gmConfig.OutPerRound,
+		mode:                gmConfig.Mode,
 		modeUpdateTimestamp: 0, // wait running member's heartbeat to update
 		runModeMutex:        sync.RWMutex{},
-		tSuspect:            config.GetTSuspect(),
-		tConfirm:            config.GetTConfirm(),
 	}
 	service.initHandleFunc()
-	server.Register(service.Handle)
-	//network.CleanUDPReceiveBuffer()
+	server.Register(service.handle)
 
-	return &service
+	return &service, nil
 }
 
-func (s *Service) Serve() {
-	errChan := s.udpServer.Serve()
-	logutil.Logger.Debug("start to receive UDP request!")
-
-	s.HandleListMember(nil)
-	s.joinToGroup()
-
-	heartbeatTicker := time.NewTicker(config.GetTHeartbeat())
-	for {
-		select {
-		case err := <-errChan:
-			logutil.Logger.Errorf(err.Error())
-		case <-heartbeatTicker.C:
-			s.routine()
-		}
-	}
-}
-
-func (s *Service) HandleHeartbeat(reqBody []byte) error {
+func (s *Service) handleHeartbeat(reqBody []byte) error {
 	req := code.HeartbeatRequest{}
 	err := json.Unmarshal(reqBody, &req)
 	if err != nil {
@@ -91,18 +74,17 @@ func (s *Service) HandleHeartbeat(reqBody []byte) error {
 	s.runModeMutex.RLock()
 	if req.ModeChangeTime > s.modeUpdateTimestamp { // update run mode
 		s.runModeMutex.Unlock()
-		s.UpdateRunMode(req.Mode, req.ModeChangeTime)
+		s.updateRunMode(req.Mode, req.ModeChangeTime)
 	} else {
 		s.runModeMutex.RUnlock()
 	}
 
-	logutil.Logger.Debugf("received membership list:%v, sent time:%v", req.MemberShipList, req.SentTimeStamp)
 	s.membershipManager.MergeMembershipList(req.MemberShipList)
 
 	return nil
 }
 
-func (s *Service) UpdateRunMode(newMode code.RunMode, updateTimestamp int64) {
+func (s *Service) updateRunMode(newMode code.RunMode, updateTimestamp int64) {
 	if updateTimestamp <= s.modeUpdateTimestamp { // check whether the update condition still valid
 		return
 	}
@@ -112,12 +94,12 @@ func (s *Service) UpdateRunMode(newMode code.RunMode, updateTimestamp int64) {
 	s.runModeMutex.Unlock()
 }
 
-func (s *Service) HandleLeave(reqBody []byte) error {
+func (s *Service) handleLeave(reqBody []byte) error {
 	// TODO: handle leave
 	return nil
 }
 
-func (s *Service) HandleListMember(reqBody []byte) error {
+func (s *Service) handleListMember(reqBody []byte) error {
 	logutil.Logger.Infof("Listing all the Members........................")
 	for k, v := range s.membershipManager.GetMembershipList() {
 		logutil.Logger.Infof("member ID: %v, Attributes: %v", k, v)
@@ -125,7 +107,7 @@ func (s *Service) HandleListMember(reqBody []byte) error {
 	return nil
 }
 
-func (s *Service) HandleListSelf(reqBody []byte) error {
+func (s *Service) handleListSelf(reqBody []byte) error {
 	// match the member with the same hostname
 	logutil.Logger.Infof("Listing self........................")
 	for k, v := range s.membershipManager.GetMembershipList() {
@@ -139,13 +121,13 @@ func (s *Service) HandleListSelf(reqBody []byte) error {
 
 func (s *Service) initHandleFunc() {
 	s.handleFuncMap = map[code.MethodType]ServiceHandleFunc{
-		code.Heartbeat:  s.HandleHeartbeat,
-		code.ListMember: s.HandleListMember,
-		code.ListSelf:   s.HandleListSelf,
+		code.Heartbeat:  s.handleHeartbeat,
+		code.ListMember: s.handleListMember,
+		code.ListSelf:   s.handleListSelf,
 	}
 }
 
-func (s *Service) Handle(header *code.RequestHeader, reqBody []byte) error {
+func (s *Service) handle(header *code.RequestHeader, reqBody []byte) error {
 	f, ok := s.handleFuncMap[header.Method]
 	if !ok {
 		return fmt.Errorf("unknown Method:%v", header.Method)
@@ -153,31 +135,12 @@ func (s *Service) Handle(header *code.RequestHeader, reqBody []byte) error {
 	return f(reqBody)
 }
 
-func (s *Service) joinToGroup() {
-	groupIntroducerHost := config.GetIntroducerHost()
-	list := s.membershipManager.GetMembershipList()
-	r := code.HeartbeatRequest{
-		MemberShipList: list,
-	}
-	req := &network.CallRequest{
-		MethodName: code.Heartbeat,
-		Request:    r,
-		TargetHost: groupIntroducerHost,
-	}
-	err := s.udpClient.Call(req)
-	if err != nil {
-		panic(err)
-	}
-	logutil.Logger.Debugf("join request sent to introducer:%s", groupIntroducerHost)
-}
-
 func (s *Service) heartbeat(membershipList map[string]*code.MemberInfo,
 	hostsOfTargets []string, piggybackRequests []*network.CallRequest) {
-	heartBeat := code.HeartbeatRequest{
+	heartBeat := &code.HeartbeatRequest{
 		MemberShipList: membershipList,
 		Mode:           s.mode,
 		ModeChangeTime: s.modeUpdateTimestamp,
-		SentTimeStamp:  time.Now().Unix(),
 	}
 
 	for _, neighborHost := range hostsOfTargets {
@@ -201,7 +164,7 @@ func (s *Service) heartbeat(membershipList map[string]*code.MemberInfo,
 
 func (s *Service) pureGossipRoutine() {
 	s.membershipManager.IncrementSelfCounter()
-	selectedNeighbors := s.membershipManager.RandomlySelectKNeighbors(config.GetNumOfGossipPerRound())
+	selectedNeighbors := s.membershipManager.RandomlySelectKNeighbors(s.FanOut)
 	membershipList := s.membershipManager.GetMembershipList()
 	go s.membershipManager.MarkMembersFailedIfNotUpdated(s.tFail, s.tCleanup)
 	s.heartbeat(membershipList, selectedNeighbors, nil)

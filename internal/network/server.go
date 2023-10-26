@@ -3,11 +3,8 @@ package network
 import (
 	"bytes"
 	"context"
-	"ece428_mp2/config"
-	"ece428_mp2/pkg/logutil"
-	"ece428_mp2/pkg/network/code"
+	"ece428_mp2/internal/network/code"
 	"fmt"
-	"math/rand"
 	"net"
 )
 
@@ -51,8 +48,7 @@ func (s *CallUDPServer) serve(ctx context.Context) {
 	for {
 		n, _, err := conn.ReadFromUDP(data)
 		if err != nil {
-			logutil.Logger.Errorf("error arise when read from UDP:%s", err.Error())
-			s.errChan <- err
+			s.errChan <- fmt.Errorf("error arise when read from UDP:%s", err.Error())
 			continue
 		}
 
@@ -94,13 +90,4 @@ func (s *CallUDPServer) serveUDPRequest(ctx context.Context, dataBuf *bytes.Buff
 
 func (s *CallUDPServer) Register(f DispatchFunc) {
 	s.f = f
-}
-
-func (s *CallUDPServer) DropThePackage() bool {
-	rate := config.GetDropRate()
-	randomNumber := rand.Intn(100)
-	if randomNumber < rate {
-		return true
-	}
-	return false
 }

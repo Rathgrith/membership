@@ -2,20 +2,9 @@ package code
 
 import (
 	"bytes"
-	"ece428_mp2/pkg/logutil"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-)
-
-type test struct {
-	A int    `json:"a"`
-	B string `json:"b"`
-	C bool   `json:"c"`
-}
-
-const (
-	headerOffset = 29
 )
 
 type JSONCodeHandler struct {
@@ -29,7 +18,6 @@ func (J JSONCodeHandler) Read(buffer *bytes.Buffer) (*RequestHeader, RequestBody
 	header := RequestHeader{}
 	err := binary.Read(buffer, binary.BigEndian, &header)
 	if err != nil {
-		logutil.Logger.Error(err)
 		return nil, nil, fmt.Errorf("parse req header failed:%w", err)
 	}
 
