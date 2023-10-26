@@ -6,21 +6,27 @@ import (
 	"ece428_mp2/pkg/network"
 	"ece428_mp2/pkg/network/code"
 	"encoding/json"
+	"fmt"
+	"sync"
 	"time"
 )
+
+type ServiceHandleFunc func(reqBody []byte) error
 
 type Service struct {
 	membershipManager *MembershipManager
 	udpServer         *network.CallUDPServer
 	udpClient         *network.CallUDPClient
+	handleFuncMap     map[code.MethodType]ServiceHandleFunc
 
-	hostname  string
-	mode      code.RunMode
-	timeStamp time.Time
-	tFail     time.Duration
-	tCleanup  time.Duration
-	tSuspect  time.Duration
-	tConfirm  time.Duration
+	hostname            string
+	mode                code.RunMode
+	modeUpdateTimestamp int64
+	runModeMutex        sync.RWMutex
+	tFail               time.Duration
+	tCleanup            time.Duration
+	tSuspect            time.Duration
+	tConfirm            time.Duration
 
 	heartbeatCounter int
 }
@@ -37,17 +43,19 @@ func NewGossipService() *Service {
 	client := network.NewCallUDPClient()
 
 	service := Service{
-		membershipManager: manager,
-		udpServer:         server,
-		udpClient:         client,
-		timeStamp:         time.Time{},
-		hostname:          selfHost,
-		tFail:             config.GetTFail(),
-		tCleanup:          config.GetTCleanup(),
-		mode:              config.GetDefaultRunMode(),
-		tSuspect:          config.GetTSuspect(),
-		tConfirm:          config.GetTConfirm(),
+		membershipManager:   manager,
+		udpServer:           server,
+		udpClient:           client,
+		hostname:            selfHost,
+		tFail:               config.GetTFail(),
+		tCleanup:            config.GetTCleanup(),
+		mode:                config.GetDefaultRunMode(),
+		modeUpdateTimestamp: 0, // wait running member's heartbeat to update
+		runModeMutex:        sync.RWMutex{},
+		tSuspect:            config.GetTSuspect(),
+		tConfirm:            config.GetTConfirm(),
 	}
+	service.initHandleFunc()
 	server.Register(service.Handle)
 
 	return &service
@@ -65,171 +73,119 @@ func (s *Service) Serve() {
 		case err := <-errChan:
 			logutil.Logger.Errorf(err.Error())
 		case <-heartbeatTicker.C:
-			s.detectionRoutine()
+			s.routine()
 		}
 	}
 }
 
-func (s *Service) HandleRunModeChange(flag bool, timestamp time.Time) {
-	if timestamp.After(s.timeStamp) {
-		if flag == false {
-			s.mode = code.PureGossip
-		} else {
-			s.mode = code.GossipWithSuspicion
-		}
+func (s *Service) HandleHeartbeat(reqBody []byte) error {
+	req := code.HeartbeatRequest{}
+	err := json.Unmarshal(reqBody, &req)
+	if err != nil {
+		return err
 	}
-	logutil.Logger.Infof("suspicion flag changed to:%v", s.mode)
-}
 
-func (s *Service) HandleJoin(request *code.JoinRequest) {
-	logutil.Logger.Infof("receive join request:%v", request.Host)
-	s.membershipManager.JoinToMembershipList(request)
-}
-
-func (s *Service) HandleSuspicion(request *code.SuspensionRequest) {
-	s.membershipManager.HandleSuspicionRequest(request)
-}
-
-func (s *Service) HandleLeave() {
-	s.membershipManager.LeaveFromMembershipList(config.GetSelfHostName())
-}
-
-func (s *Service) ListMember() {
-	logutil.Logger.Infof("Listing all the Members........................")
-	for k, v := range s.membershipManager.GetMembershipList() {
-		logutil.Logger.Infof("member ID: %v, Attributes: %v", k, v)
+	// TODO: provide separate run mode update interface
+	s.runModeMutex.RLock()
+	if req.ModeChangeTime > s.modeUpdateTimestamp { // update run mode
+		s.runModeMutex.Unlock()
+		s.UpdateRunMode(req.Mode, req.ModeChangeTime)
+	} else {
+		s.runModeMutex.RUnlock()
 	}
-}
 
-func (s *Service) ListSelf(hostname string) {
-	// match the member with the same hostname
-	logutil.Logger.Infof("Listing self........................")
-	for k, v := range s.membershipManager.GetMembershipList() {
-		if v.Hostname == hostname {
-			logutil.Logger.Infof("current member ID: %v", k)
-			logutil.Logger.Infof("current heartbeat counter: %v", s.heartbeatCounter)
-		}
-	}
-}
-
-func (s *Service) Handle(header *code.RequestHeader, reqBody []byte) error {
-	if header.Method == code.Join {
-		req := code.JoinRequest{}
-		err := json.Unmarshal(reqBody, &req)
-		if err != nil {
-			return err
-		}
-		s.HandleJoin(&req)
-	} else if header.Method == code.Heartbeat {
-		req := code.HeartbeatRequest{}
-		err := json.Unmarshal(reqBody, &req)
-		if err != nil {
-			return err
-		}
-		if req.UpdateTime.After(s.timeStamp) {
-			logutil.Logger.Infof("update timestamp:%v", req.UpdateTime)
-			logutil.Logger.Infof("update mode:%v", req.SuspicionFlag)
-			if req.SuspicionFlag == false {
-				s.mode = code.PureGossip
-			} else {
-				s.mode = code.GossipWithSuspicion
-			}
-			s.timeStamp = req.UpdateTime
-		}
-		s.membershipManager.MergeMembershipList(req.MemberShipList)
-	} else if header.Method == code.ListMember {
-		s.ListMember()
-	} else if header.Method == code.Leave {
-		s.HandleLeave()
-	} else if header.Method == code.ListSelf {
-		req := code.HeartbeatRequest{}
-		err := json.Unmarshal(reqBody, &req)
-		if err != nil {
-			return err
-		}
-		s.ListSelf(s.hostname)
-	} else if header.Method == code.ChangeSuspicion {
-		req := code.ChangeSuspicionRequest{}
-		err := json.Unmarshal(reqBody, &req)
-		if err != nil {
-			return err
-		}
-		if req.Timestamp.After(s.timeStamp) {
-			s.timeStamp = req.Timestamp
-			if req.SuspicionFlag == false {
-				s.mode = code.PureGossip
-			} else {
-				s.mode = code.GossipWithSuspicion
-			}
-		}
-		s.HandleRunModeChange(req.SuspicionFlag, req.Timestamp)
-	} else if header.Method == code.Suspicion {
-		req := code.SuspensionRequest{}
-		err := json.Unmarshal(reqBody, &req)
-		if err != nil {
-			return err
-		}
-		s.HandleSuspicion(&req)
-	}
+	s.membershipManager.MergeMembershipList(req.MemberShipList)
 
 	return nil
 }
 
+func (s *Service) UpdateRunMode(newMode code.RunMode, updateTimestamp int64) {
+	if updateTimestamp <= s.modeUpdateTimestamp { // check whether the update condition still valid
+		return
+	}
+	s.runModeMutex.Lock()
+	s.mode = newMode
+	s.modeUpdateTimestamp = updateTimestamp
+	s.runModeMutex.Unlock()
+}
+
+func (s *Service) HandleLeave(reqBody []byte) error {
+	// TODO: handle leave
+	return nil
+}
+
+func (s *Service) HandleListMember(reqBody []byte) error {
+	logutil.Logger.Infof("Listing all the Members........................")
+	for k, v := range s.membershipManager.GetMembershipList() {
+		logutil.Logger.Infof("member ID: %v, Attributes: %v", k, v)
+	}
+	return nil
+}
+
+func (s *Service) HandleListSelf(reqBody []byte) error {
+	// match the member with the same hostname
+	logutil.Logger.Infof("Listing self........................")
+	for k, v := range s.membershipManager.GetMembershipList() {
+		if v.Hostname == s.hostname {
+			logutil.Logger.Infof("current member ID: %v", k)
+			logutil.Logger.Infof("current heartbeat counter: %v", s.heartbeatCounter)
+		}
+	}
+	return nil
+}
+
+func (s *Service) initHandleFunc() {
+	s.handleFuncMap = map[code.MethodType]ServiceHandleFunc{
+		code.Heartbeat:  s.HandleHeartbeat,
+		code.ListMember: s.HandleListMember,
+		code.ListSelf:   s.HandleListSelf,
+	}
+}
+
+func (s *Service) Handle(header *code.RequestHeader, reqBody []byte) error {
+	f, ok := s.handleFuncMap[header.Method]
+	if !ok {
+		return fmt.Errorf("unknown Method:%v", header.Method)
+	}
+	return f(reqBody)
+}
+
 func (s *Service) joinToGroup() {
-	introducerHost := config.GetIntroducerHost()
+	groupIntroducerHost := config.GetIntroducerHost()
 	list := s.membershipManager.GetMembershipList()
 	r := code.HeartbeatRequest{
 		MemberShipList: list,
-		SuspicionFlag:  false,
-		UpdateTime:     time.Time{},
 	}
 	req := &network.CallRequest{
 		MethodName: code.Heartbeat,
 		Request:    r,
-		TargetHost: introducerHost,
+		TargetHost: groupIntroducerHost,
 	}
 	err := s.udpClient.Call(req)
 	if err != nil {
 		panic(err)
 	}
-	logutil.Logger.Debug("join request sent")
+	logutil.Logger.Debugf("join request sent to introducer:%s", groupIntroducerHost)
 }
 
-func (s *Service) detectionRoutine() {
-	s.membershipManager.IncrementSelfCounter()
-	selectedNeighbors := s.membershipManager.RandomlySelectKNeighbors(config.GetNumOfGossipPerRound())
-	var forwardRequests []*code.SuspensionRequest
-	if s.mode == code.GossipWithSuspicion {
-		s.membershipManager.MarkMembersSuspectedIfNotUpdated(s.tSuspect, s.tConfirm)
-		forwardRequests = s.membershipManager.GetAllForwardSuspicionRequest()
-	}
-	membershipList := s.membershipManager.GetMembershipList()
-	flag := false
-	if s.mode == code.PureGossip {
-		go s.membershipManager.MarkMembersFailedIfNotUpdated(s.tFail, s.tCleanup)
-	} else {
-		flag = true
-	}
-	r := code.HeartbeatRequest{
+func (s *Service) heartbeat(membershipList map[string]*code.MemberInfo,
+	hostsOfTargets []string, piggybackRequests []*network.CallRequest) {
+	heartBeat := code.HeartbeatRequest{
 		MemberShipList: membershipList,
-		UpdateTime:     s.timeStamp,
-		SuspicionFlag:  flag,
+		Mode:           s.mode,
+		ModeChangeTime: s.modeUpdateTimestamp,
 	}
-	for _, neighborHost := range selectedNeighbors {
-		for _, fr := range forwardRequests {
-			req := network.CallRequest{
-				MethodName: code.Suspicion,
-				Request:    fr,
-				TargetHost: neighborHost,
-			}
-			err := s.udpClient.Call(&req)
+
+	for _, neighborHost := range hostsOfTargets {
+		for _, r := range piggybackRequests {
+			err := s.udpClient.Call(r)
 			if err != nil {
-				logutil.Logger.Errorf("forward Suspicion failed:%v, host:%v", err, neighborHost)
+				logutil.Logger.Errorf("piggyback request failed:%v, req:%v, target host:%v", err, r.MethodName, neighborHost)
 			}
 		}
 		req := network.CallRequest{
 			MethodName: code.Heartbeat,
-			Request:    r,
+			Request:    heartBeat,
 			TargetHost: neighborHost,
 		}
 		err := s.udpClient.Call(&req)
@@ -237,5 +193,17 @@ func (s *Service) detectionRoutine() {
 			logutil.Logger.Errorf("send heartbeat failed:%v, host:%v", err, neighborHost)
 		}
 	}
+}
+
+func (s *Service) pureGossipRoutine() {
+	s.membershipManager.IncrementSelfCounter()
+	selectedNeighbors := s.membershipManager.RandomlySelectKNeighbors(config.GetNumOfGossipPerRound())
+	membershipList := s.membershipManager.GetMembershipList()
+	go s.membershipManager.MarkMembersFailedIfNotUpdated(s.tFail, s.tCleanup)
+	s.heartbeat(membershipList, selectedNeighbors, nil)
+}
+
+func (s *Service) routine() {
+	s.pureGossipRoutine()
 	s.heartbeatCounter++
 }

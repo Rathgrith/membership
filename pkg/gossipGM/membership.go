@@ -15,10 +15,6 @@ type MembershipManager struct {
 	listMutex      sync.RWMutex
 	selfHostName   string
 	selfID         string
-
-	IncarnationNumberTrack map[string]int
-	forwardRequestBuf      []*code.SuspensionRequest
-	mu                     sync.Mutex
 }
 
 func NewMembershipManager(selfHostName string) *MembershipManager {
@@ -26,9 +22,6 @@ func NewMembershipManager(selfHostName string) *MembershipManager {
 		membershipList: make(map[string]*code.MemberInfo),
 		listMutex:      sync.RWMutex{},
 		selfHostName:   selfHostName,
-
-		forwardRequestBuf:      make([]*code.SuspensionRequest, 0),
-		IncarnationNumberTrack: make(map[string]int),
 	}
 
 	manager.initMembershipList()
@@ -37,11 +30,21 @@ func NewMembershipManager(selfHostName string) *MembershipManager {
 }
 
 func (m *MembershipManager) initMembershipList() {
-	m.updateOrAddMember(m.selfHostName)
+	m.addSelfToList(m.selfHostName)
 }
 
-func (m *MembershipManager) JoinToMembershipList(request *code.JoinRequest) {
-	m.updateOrAddMember(request.Host)
+func (m *MembershipManager) addSelfToList(hostname string) {
+	// this function will only be called when init, do not use mutex to protect write!
+	host := hostname
+	timestamp := time.Now()
+	uniqueHostID := m.generateUniqueHostID(host, timestamp.Format("20060102150405"))
+	m.membershipList[uniqueHostID] = &code.MemberInfo{
+		Counter:         1,
+		LocalUpdateTime: time.Now(),
+		StatusCode:      code.Alive,
+		Hostname:        hostname,
+	}
+	m.selfID = uniqueHostID
 }
 
 func (m *MembershipManager) LeaveFromMembershipList(hostname string) {
@@ -50,8 +53,8 @@ func (m *MembershipManager) LeaveFromMembershipList(hostname string) {
 
 	for k, v := range m.membershipList {
 		if strings.Contains(k, hostname) && v.StatusCode == code.Alive {
-			v.StatusCode = code.Failed
-			m.membershipList[k] = v
+			m.membershipList[k].StatusCode = code.Failed
+			go m.StartCleanup(k, 10)
 			break
 		}
 	}
@@ -65,40 +68,15 @@ func (m *MembershipManager) MergeMembershipList(receivedMembershipList map[strin
 			continue
 		}
 
-		if _, ok := m.membershipList[k]; ok {
+		if _, ok := m.membershipList[k]; ok { // update
 			if m.membershipList[k].Counter < v.Counter && m.membershipList[k].StatusCode == code.Alive {
-				m.membershipList[k] = v
-				m.membershipList[k].LocalTime = time.Now()
+				m.membershipList[k].Counter = v.Counter
+				m.membershipList[k].LocalUpdateTime = time.Now()
 			}
-		} else {
+		} else { // add
 			m.membershipList[k] = v
-			m.membershipList[k].LocalTime = time.Now()
+			m.membershipList[k].LocalUpdateTime = time.Now()
 		}
-	}
-}
-
-func (m *MembershipManager) updateOrAddMember(hostname string) {
-	m.listMutex.Lock()
-	defer m.listMutex.Unlock()
-
-	for k, v := range m.membershipList {
-		if v.Hostname == hostname && v.StatusCode == code.Alive {
-			delete(m.membershipList, k)
-			break
-		}
-	}
-
-	host := hostname
-	timestamp := time.Now()
-	uniqueHostID := m.generateUniqueHostID(host, timestamp.Format("20060102150405"))
-	m.membershipList[uniqueHostID] = &code.MemberInfo{
-		Counter:    1,
-		LocalTime:  time.Now(),
-		StatusCode: code.Alive,
-		Hostname:   hostname,
-	}
-	if host == m.selfHostName {
-		m.selfID = uniqueHostID
 	}
 }
 
@@ -112,6 +90,7 @@ func (m *MembershipManager) IncrementSelfCounter() {
 
 	if self, ok := m.membershipList[m.selfID]; ok && self.StatusCode == code.Alive {
 		self.Counter += 1
+		self.LocalUpdateTime = time.Now()
 	} else {
 		logutil.Logger.Errorf("can not find self member instance or self has been marked as failed")
 	}
@@ -122,7 +101,7 @@ func (m *MembershipManager) GetMembershipList() map[string]*code.MemberInfo {
 	defer m.listMutex.RUnlock()
 
 	copiedList := make(map[string]*code.MemberInfo)
-	for k, v := range m.membershipList {
+	for k, v := range m.membershipList { // shallow copy
 		copiedList[k] = v
 	}
 	return copiedList
@@ -135,24 +114,21 @@ func (m *MembershipManager) MarkMembersFailedIfNotUpdated(TFail, TCleanup time.D
 	currentTime := time.Now()
 
 	for k, v := range m.membershipList {
-		if strings.HasPrefix(k, m.selfHostName) {
-			continue
-		}
-		timeElapsed := currentTime.Sub(v.LocalTime)
-		if timeElapsed > TFail && v.StatusCode != code.Failed { // If member is alive or suspected and time elapsed exceeds Tfail
-			v.StatusCode = code.Failed // Mark as failed
-			logutil.Logger.Infof("Mark member as failed:%s last update time:%s cur time:%v", k, v.LocalTime.String(), time.Now())
-			m.membershipList[k] = v
+		timeElapsed := currentTime.Sub(v.LocalUpdateTime)
+		if timeElapsed > TFail && v.StatusCode != code.Failed {
+			m.membershipList[k].StatusCode = code.Failed
+			logutil.Logger.Infof("Mark member as failed:%s last update time:%s cur time:%v", k, v.LocalUpdateTime.String(), time.Now())
 			go m.StartCleanup(k, TCleanup)
 		}
 	}
 }
 
 func (m *MembershipManager) RandomlySelectKNeighbors(k int) []string {
+	keys := make([]string, 0, len(m.membershipList))
+	selectedNeighbor := make([]string, 0, k)
+
 	m.listMutex.RLock()
 	defer m.listMutex.RUnlock()
-
-	keys := make([]string, 0, len(m.membershipList))
 	for key := range m.membershipList {
 		keys = append(keys, key)
 	}
@@ -160,7 +136,6 @@ func (m *MembershipManager) RandomlySelectKNeighbors(k int) []string {
 		keys[i], keys[j] = keys[j], keys[i]
 	})
 
-	selectedNeighbor := make([]string, 0, k)
 	for i := 0; i < k && i < len(keys); i++ {
 		key := keys[i]
 		member := m.membershipList[key]

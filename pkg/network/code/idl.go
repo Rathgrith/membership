@@ -12,8 +12,7 @@ const (
 type MethodType int32
 
 const (
-	Join MethodType = iota + 1
-	Heartbeat
+	Heartbeat MethodType = iota + 1
 	Leave
 	ListMember
 	ListSelf
@@ -28,10 +27,6 @@ const (
 	Failed
 	Suspected
 )
-
-type JoinRequest struct {
-	Host string `json:"host"`
-}
 
 type ListMemberRequest struct {
 	Host string `json:"host"`
@@ -51,16 +46,16 @@ type LeaveRequest struct {
 }
 
 type MemberInfo struct {
-	Counter    int          `json:"counter"`     // Counter for the member
-	LocalTime  time.Time    `json:"local_time"`  // Local timestamp
-	StatusCode MemberStatus `json:"status_code"` // Status code 1(alive), 2(suspect), 3(failed)
-	Hostname   string       `json:"hostname"`    // The hostname
+	Counter         int          `json:"counter"`         // Counter for the member
+	LocalUpdateTime time.Time    `json:"localUpdateTime"` // Local timestamp
+	StatusCode      MemberStatus `json:"status_code"`     // Status code 1(alive), 2(suspect), 3(failed)
+	Hostname        string       `json:"hostname"`        // The hostname
 }
 
 type HeartbeatRequest struct {
 	MemberShipList map[string]*MemberInfo `json:"member_ship_list"`
-	SuspicionFlag  bool                   `json:"suspicion_flag"`
-	UpdateTime     time.Time              `json:"update_time"`
+	Mode           RunMode                `json:"mode"`
+	ModeChangeTime int64                  `json:"mode_change_time"`
 }
 
 type SuspensionInfoType int
