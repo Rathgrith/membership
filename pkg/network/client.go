@@ -62,7 +62,6 @@ func (c *CallUDPClient) call(req *CallRequest, targetHost string, nowait bool) e
 		return nil
 	}
 
-	//logutil.Logger.Debugf("sent all cached req")
 	return worker.sendRequest()
 }
 

@@ -45,6 +45,7 @@ func (m *MembershipManager) addSelfToList(hostname string) {
 		Hostname:        hostname,
 	}
 	m.selfID = uniqueHostID
+	logutil.Logger.Infof("self id:%v", uniqueHostID)
 }
 
 func (m *MembershipManager) LeaveFromMembershipList(hostname string) {
@@ -117,7 +118,8 @@ func (m *MembershipManager) MarkMembersFailedIfNotUpdated(TFail, TCleanup time.D
 		timeElapsed := currentTime.Sub(v.LocalUpdateTime)
 		if timeElapsed > TFail && v.StatusCode != code.Failed {
 			m.membershipList[k].StatusCode = code.Failed
-			logutil.Logger.Infof("Mark member as failed:%s last update time:%s cur time:%v", k, v.LocalUpdateTime.String(), time.Now())
+			logutil.Logger.Infof("Mark member:%s as failed, last update time:%s, elapsed:%v",
+				k, v.LocalUpdateTime.String(), time.Now().Sub(v.LocalUpdateTime))
 			go m.StartCleanup(k, TCleanup)
 		}
 	}
