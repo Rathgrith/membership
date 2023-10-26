@@ -44,12 +44,13 @@ func (s *Service) GetHostsOfAllMembers() []string {
 func (s *Service) SubscribeFailNotification(interestHost []string, all bool, notifyChan chan<- string) {
 	if all {
 		s.interestAll = true
-		return
+	} else {
+		m := make(map[string]bool, len(interestHost))
+		for _, host := range interestHost {
+			m[host] = true
+		}
+		s.interestFailHost = m
 	}
-	m := make(map[string]bool, len(interestHost))
-	for _, host := range interestHost {
-		m[host] = true
-	}
-	s.interestFailHost = m
+
 	s.failNotifyChan = notifyChan
 }
