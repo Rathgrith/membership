@@ -80,6 +80,7 @@ func (m *MembershipManager) MergeMembershipList(receivedMembershipList map[strin
 			m.membershipList[k].LocalUpdateTime = time.Now()
 		}
 	}
+	logutil.Logger.Debug("merge complete-------")
 }
 
 func (m *MembershipManager) generateUniqueHostID(hostname string, timestamp string) string {

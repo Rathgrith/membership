@@ -70,11 +70,6 @@ func (s *CallUDPServer) serveUDPRequest(ctx context.Context, dataBuf *bytes.Buff
 		return
 	}
 
-	if s.DropThePackage() {
-		logutil.Logger.Infof("Drop current UDP package")
-		return
-	}
-
 	codeHandler := code.HandlerMap[meta.CodeHandlerType]
 	for dataBuf.Len() > 0 {
 		reqHeader, reqBody, err := codeHandler.Read(dataBuf)
