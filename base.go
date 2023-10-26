@@ -41,13 +41,12 @@ func (s *Service) GetHostsOfAllMembers() []string {
 	return hosts
 }
 
-type HandleNodeFailFunc func(host string)
-
 func (s *Service) SubscribeFailNotification(interestHost []string, all bool, notifyChan chan<- string) {
-	m := make(map[string]bool, len(interestHost))
 	if all {
-		interestHost = s.GetHostsOfAllMembers()
+		s.interestAll = true
+		return
 	}
+	m := make(map[string]bool, len(interestHost))
 	for _, host := range interestHost {
 		m[host] = true
 	}

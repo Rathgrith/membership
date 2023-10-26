@@ -20,6 +20,7 @@ type Service struct {
 	handleFuncMap     map[code.MethodType]ServiceHandleFunc
 
 	interestFailHost map[string]bool
+	interestAll      bool
 	failNotifyChan   chan<- string
 
 	hostname            string
@@ -59,6 +60,8 @@ func NewGossipGMService(gmConfig *GossipGMConfig) (*Service, error) {
 		mode:                gmConfig.Mode,
 		modeUpdateTimestamp: 0, // wait running member's heartbeat to update
 		runModeMutex:        sync.RWMutex{},
+		interestAll:         false,
+		interestFailHost:    map[string]bool{},
 	}
 	service.initHandleFunc()
 	server.Register(service.handle)
@@ -165,10 +168,6 @@ func (s *Service) heartbeat(membershipList map[string]*code.MemberInfo,
 	}
 }
 
-func (s *Service) notify() {
-
-}
-
 func (s *Service) pureGossipRoutine() {
 	s.membershipManager.IncrementSelfCounter()
 	selectedNeighbors := s.membershipManager.RandomlySelectKNeighborsHost(s.FanOut)
@@ -176,7 +175,7 @@ func (s *Service) pureGossipRoutine() {
 	go func() {
 		failedMemberHost := s.membershipManager.MarkMembersFailedIfNotUpdated(s.tFail, s.tCleanup)
 		for _, host := range failedMemberHost {
-			if s.interestFailHost[host] {
+			if s.interestAll || s.interestFailHost[host] {
 				s.failNotifyChan <- host
 			}
 		}
