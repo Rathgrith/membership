@@ -82,6 +82,7 @@ func (m *MembershipManager) MergeMembershipList(receivedMembershipList map[strin
 
 func (m *MembershipManager) generateUniqueHostID(hostname string, timestamp string) string {
 	return hostname
+	// TODO: solve expired request at network level
 	//return fmt.Sprintf("%s-daemon%s", hostname, timestamp)
 }
 
@@ -108,7 +109,8 @@ func (m *MembershipManager) GetMembershipList() map[string]*code.MemberInfo {
 	return copiedList
 }
 
-func (m *MembershipManager) MarkMembersFailedIfNotUpdated(TFail, TCleanup time.Duration) {
+func (m *MembershipManager) MarkMembersFailedIfNotUpdated(TFail, TCleanup time.Duration) []string {
+	failedMemberHost := make([]string, 0)
 	m.listMutex.Lock()
 	defer m.listMutex.Unlock()
 
@@ -120,12 +122,15 @@ func (m *MembershipManager) MarkMembersFailedIfNotUpdated(TFail, TCleanup time.D
 			m.membershipList[k].StatusCode = code.Failed
 			logutil.Logger.Infof("Mark member:%s as failed, last update time:%s, elapsed:%v",
 				k, v.LocalUpdateTime.String(), time.Now().Sub(v.LocalUpdateTime))
+			failedMemberHost = append(failedMemberHost, v.Hostname)
 			go m.StartCleanup(k, TCleanup)
 		}
 	}
+
+	return failedMemberHost
 }
 
-func (m *MembershipManager) RandomlySelectKNeighbors(k int) []string {
+func (m *MembershipManager) RandomlySelectKNeighborsHost(k int) []string {
 	keys := make([]string, 0, len(m.membershipList))
 	selectedNeighbor := make([]string, 0, k)
 

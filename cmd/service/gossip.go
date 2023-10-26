@@ -3,6 +3,7 @@ package main
 import (
 	"ece428_mp2"
 	"ece428_mp2/internal/logutil"
+	"fmt"
 	"github.com/sirupsen/logrus"
 )
 
@@ -17,5 +18,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	failListenChan := make(chan string, 10)
+	service.SubscribeFailNotification(nil, true, failListenChan)
+	go func() {
+		for {
+			failedHost := <-failListenChan
+			fmt.Println(fmt.Sprintf("%v failed", failedHost))
+		}
+	}()
 	service.Serve()
 }

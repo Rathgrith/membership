@@ -19,6 +19,9 @@ type Service struct {
 	udpClient         *network.CallUDPClient
 	handleFuncMap     map[code.MethodType]ServiceHandleFunc
 
+	interestFailHost map[string]bool
+	failNotifyChan   chan<- string
+
 	hostname            string
 	mode                code.RunMode
 	modeUpdateTimestamp int64
@@ -162,11 +165,20 @@ func (s *Service) heartbeat(membershipList map[string]*code.MemberInfo,
 	}
 }
 
+func (s *Service) notify() {
+
+}
+
 func (s *Service) pureGossipRoutine() {
 	s.membershipManager.IncrementSelfCounter()
-	selectedNeighbors := s.membershipManager.RandomlySelectKNeighbors(s.FanOut)
+	selectedNeighbors := s.membershipManager.RandomlySelectKNeighborsHost(s.FanOut)
 	membershipList := s.membershipManager.GetMembershipList()
-	go s.membershipManager.MarkMembersFailedIfNotUpdated(s.tFail, s.tCleanup)
+	go func() {
+		failedMemberHost := s.membershipManager.MarkMembersFailedIfNotUpdated(s.tFail, s.tCleanup)
+		for _, host := range failedMemberHost {
+			s.failNotifyChan <- host
+		}
+	}()
 	s.heartbeat(membershipList, selectedNeighbors, nil)
 }
 
