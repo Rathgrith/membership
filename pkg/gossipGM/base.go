@@ -57,6 +57,7 @@ func NewGossipService() *Service {
 	}
 	service.initHandleFunc()
 	server.Register(service.Handle)
+	network.CleanUDPReceiveBuffer()
 
 	return &service
 }
@@ -95,7 +96,7 @@ func (s *Service) HandleHeartbeat(reqBody []byte) error {
 		s.runModeMutex.RUnlock()
 	}
 
-	logutil.Logger.Debugf("received membership list:%v", req.MemberShipList)
+	//logutil.Logger.Debugf("received membership list:%v", req.MemberShipList)
 	s.membershipManager.MergeMembershipList(req.MemberShipList)
 
 	return nil

@@ -85,9 +85,13 @@ func (s *CallUDPServer) serveUDPRequest(ctx context.Context, dataBuf *bytes.Buff
 		if !ok {
 			continue
 		}
+		if int(reqHeader.BodyLength) != len(body) {
+			s.errChan <- fmt.Errorf("incomplete request body， method:%v", reqHeader.Method)
+			continue
+		}
 		err = s.f(reqHeader, body)
 		if err != nil {
-			//s.errChan <- fmt.Errorf("handle request failed:%w, string body:%v", err, string(body))
+			s.errChan <- fmt.Errorf("handle request failed:%w, string body:%v", err, string(body))
 			continue
 		}
 	}
