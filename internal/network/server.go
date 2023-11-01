@@ -3,8 +3,8 @@ package network
 import (
 	"bytes"
 	"context"
-	"ece428_mp2/internal/network/code"
 	"fmt"
+	"membership/internal/network/code"
 	"net"
 )
 

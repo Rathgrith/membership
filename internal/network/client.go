@@ -2,9 +2,9 @@ package network
 
 import (
 	"bytes"
-	code2 "ece428_mp2/internal/network/code"
 	"encoding/binary"
 	"fmt"
+	"membership/internal/network/code"
 	"net"
 	"sync"
 )
@@ -14,7 +14,7 @@ const (
 )
 
 type CallRequest struct {
-	MethodName code2.MethodType
+	MethodName code.MethodType
 	Request    interface{}
 	TargetHost string
 }
@@ -24,12 +24,12 @@ type CallUDPClient struct {
 	workerPoolMu sync.Mutex
 }
 
-var nowaitMethod = map[code2.MethodType]bool{
-	code2.ListSelf:        true,
-	code2.ListMember:      true,
-	code2.Leave:           true,
-	code2.ChangeSuspicion: true,
-	code2.Heartbeat:       true,
+var nowaitMethod = map[code.MethodType]bool{
+	code.ListSelf:        true,
+	code.ListMember:      true,
+	code.Leave:           true,
+	code.ChangeSuspicion: true,
+	code.Heartbeat:       true,
 }
 
 func NewCallUDPClient() *CallUDPClient {
@@ -66,13 +66,13 @@ func (c *CallUDPClient) call(req *CallRequest, targetHost string, nowait bool) e
 }
 
 func (c *CallUDPClient) encodeReq(req *CallRequest) ([]byte, error) {
-	header := code2.RequestHeader{
+	header := code.RequestHeader{
 		Method: req.MethodName,
 	}
 
 	body := req.Request
 
-	encodedData, err := code2.HandlerMap[code2.JSONType].Encode(&header, body)
+	encodedData, err := code.HandlerMap[code.JSONType].Encode(&header, body)
 	if err != nil {
 		return nil, err
 	}
@@ -119,8 +119,8 @@ func (w *udpWorker) initBuf() {
 		w.reqBuf = bytes.NewBuffer(nil)
 	}
 
-	meta := code2.NewMeta(code2.JSONType)
-	code2.WriteMeta(meta, w.reqBuf)
+	meta := code.NewMeta(code.JSONType)
+	code.WriteMeta(meta, w.reqBuf)
 }
 
 func (w *udpWorker) writeRequest(encodedReq []byte) error {

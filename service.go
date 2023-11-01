@@ -1,12 +1,12 @@
-package ece428_mp2
+package membership
 
 import (
-	"ece428_mp2/internal/gossipGM"
-	"ece428_mp2/internal/logutil"
-	"ece428_mp2/internal/network"
-	"ece428_mp2/internal/network/code"
 	"encoding/json"
 	"fmt"
+	"membership/internal/gossipGM"
+	"membership/internal/logutil"
+	"membership/internal/network"
+	"membership/internal/network/code"
 	"sync"
 	"time"
 )

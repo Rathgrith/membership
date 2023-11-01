@@ -1,10 +1,10 @@
 package main
 
 import (
-	"ece428_mp2"
-	"ece428_mp2/internal/logutil"
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"membership"
+	"membership/internal/logutil"
 )
 
 func main() {
@@ -14,7 +14,7 @@ func main() {
 		panic(err)
 	}
 
-	service, err := ece428_mp2.NewDefaultGossipGMService()
+	service, err := membership.NewDefaultGossipGMService()
 	service.JoinToGroup([]string{"fa23-cs425-4801.cs.illinois.edu"}) // join a group explicitly
 	if err != nil {
 		panic(err)

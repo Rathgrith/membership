@@ -1,11 +1,11 @@
 package main
 
 import (
-	"ece428_mp2/internal/logutil"
-	network2 "ece428_mp2/internal/network"
-	"ece428_mp2/internal/network/code"
 	"flag"
 	"github.com/sirupsen/logrus"
+	"membership/internal/logutil"
+	"membership/internal/network"
+	"membership/internal/network/code"
 	"time"
 )
 
@@ -35,11 +35,11 @@ func main() {
 		panic(err)
 	}
 
-	client := network2.NewCallUDPClient()
+	client := network.NewCallUDPClient()
 
 	if command == "list_mem" {
 		r := code.ListMemberRequest{Host: "localhost"}
-		req := &network2.CallRequest{
+		req := &network.CallRequest{
 			MethodName: code.ListMember,
 			Request:    r,
 			TargetHost: serverList[target-1],
@@ -49,8 +49,8 @@ func main() {
 			panic(err)
 		}
 	} else if command == "list_self" {
-		r := code.ListSelfRequest{Host: network2.GetSelfHostName()}
-		req := &network2.CallRequest{
+		r := code.ListSelfRequest{Host: network.GetSelfHostName()}
+		req := &network.CallRequest{
 			MethodName: code.ListSelf,
 			Request:    r,
 			TargetHost: serverList[target-1],
@@ -60,8 +60,8 @@ func main() {
 			panic(err)
 		}
 	} else if command == "leave" {
-		r := code.LeaveRequest{Host: network2.GetSelfHostName()}
-		req := &network2.CallRequest{
+		r := code.LeaveRequest{Host: network.GetSelfHostName()}
+		req := &network.CallRequest{
 			MethodName: code.Leave,
 			Request:    r,
 			TargetHost: serverList[target-1],
@@ -74,7 +74,7 @@ func main() {
 		for _, server := range serverList {
 			r := code.ChangeSuspicionRequest{SuspicionFlag: true,
 				Timestamp: time.Now()}
-			req := &network2.CallRequest{
+			req := &network.CallRequest{
 				MethodName: code.ChangeSuspicion,
 				Request:    r,
 				TargetHost: server,
@@ -88,7 +88,7 @@ func main() {
 		for _, server := range serverList {
 			r := code.ChangeSuspicionRequest{SuspicionFlag: false,
 				Timestamp: time.Now()}
-			req := &network2.CallRequest{
+			req := &network.CallRequest{
 				MethodName: code.ChangeSuspicion,
 				Request:    r,
 				TargetHost: server,

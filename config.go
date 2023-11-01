@@ -1,7 +1,7 @@
-package ece428_mp2
+package membership
 
 import (
-	"ece428_mp2/internal/network/code"
+	"membership/internal/network/code"
 	"time"
 )
 
