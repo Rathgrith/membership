@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"membership/internal/network/code"
+	"github.com/Rathgrith/membership/pkg/network/code"
 	"net"
 	"sync"
 )

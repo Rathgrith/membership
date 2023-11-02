@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/Rathgrith/membership"
+	"github.com/Rathgrith/membership/pkg/logutil"
 	"github.com/sirupsen/logrus"
-	"membership"
-	"membership/internal/logutil"
 )
 
 func main() {

@@ -1,9 +1,9 @@
 package gossipGM
 
 import (
+	"github.com/Rathgrith/membership/pkg/logutil"
+	"github.com/Rathgrith/membership/pkg/network/code"
 	"math/rand"
-	"membership/internal/logutil"
-	"membership/internal/network/code"
 	"strings"
 	"sync"
 	"time"

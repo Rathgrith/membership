@@ -1,7 +1,7 @@
 package membership
 
 import (
-	"membership/internal/network/code"
+	"github.com/Rathgrith/membership/pkg/network/code"
 	"time"
 )
 

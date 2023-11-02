@@ -3,10 +3,10 @@ package membership
 import (
 	"encoding/json"
 	"fmt"
-	"membership/internal/gossipGM"
-	"membership/internal/logutil"
-	"membership/internal/network"
-	"membership/internal/network/code"
+	"github.com/Rathgrith/membership/pkg/gossipGM"
+	"github.com/Rathgrith/membership/pkg/logutil"
+	"github.com/Rathgrith/membership/pkg/network"
+	"github.com/Rathgrith/membership/pkg/network/code"
 	"sync"
 	"time"
 )

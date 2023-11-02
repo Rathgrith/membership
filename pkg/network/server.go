@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"membership/internal/network/code"
+	"github.com/Rathgrith/membership/pkg/network/code"
 	"net"
 )
 

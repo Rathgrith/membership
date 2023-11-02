@@ -1,8 +1,8 @@
 package membership
 
 import (
-	"membership/internal/logutil"
-	"membership/internal/network/code"
+	"github.com/Rathgrith/membership/pkg/logutil"
+	"github.com/Rathgrith/membership/pkg/network/code"
 	"time"
 )
 

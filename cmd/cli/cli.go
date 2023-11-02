@@ -2,10 +2,10 @@ package main
 
 import (
 	"flag"
+	"github.com/Rathgrith/membership/pkg/logutil"
+	"github.com/Rathgrith/membership/pkg/network"
+	"github.com/Rathgrith/membership/pkg/network/code"
 	"github.com/sirupsen/logrus"
-	"membership/internal/logutil"
-	"membership/internal/network"
-	"membership/internal/network/code"
 	"time"
 )
 
