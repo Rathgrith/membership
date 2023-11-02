@@ -2,10 +2,8 @@ package main
 
 import (
 	"flag"
-	"github.com/Rathgrith/membership/pkg/logutil"
 	"github.com/Rathgrith/membership/pkg/network"
 	"github.com/Rathgrith/membership/pkg/network/code"
-	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -30,11 +28,6 @@ func main() {
 	flag.IntVar(&target, "t", 0, "determine command target")
 	flag.Parse()
 
-	err := logutil.InitDefaultLogger(logrus.DebugLevel)
-	if err != nil {
-		panic(err)
-	}
-
 	client := network.NewCallUDPClient()
 
 	if command == "list_mem" {
@@ -44,7 +37,7 @@ func main() {
 			Request:    r,
 			TargetHost: serverList[target-1],
 		}
-		err = client.Call(req)
+		err := client.Call(req)
 		if err != nil {
 			panic(err)
 		}
@@ -55,7 +48,7 @@ func main() {
 			Request:    r,
 			TargetHost: serverList[target-1],
 		}
-		err = client.Call(req)
+		err := client.Call(req)
 		if err != nil {
 			panic(err)
 		}
@@ -66,7 +59,7 @@ func main() {
 			Request:    r,
 			TargetHost: serverList[target-1],
 		}
-		err = client.Call(req)
+		err := client.Call(req)
 		if err != nil {
 			panic(err)
 		}
@@ -79,7 +72,7 @@ func main() {
 				Request:    r,
 				TargetHost: server,
 			}
-			err = client.Call(req)
+			err := client.Call(req)
 			if err != nil {
 				panic(err)
 			}
@@ -93,7 +86,7 @@ func main() {
 				Request:    r,
 				TargetHost: server,
 			}
-			err = client.Call(req)
+			err := client.Call(req)
 			if err != nil {
 				panic(err)
 			}

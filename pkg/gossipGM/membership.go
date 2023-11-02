@@ -1,7 +1,7 @@
 package gossipGM
 
 import (
-	"github.com/Rathgrith/membership/pkg/logutil"
+	"fmt"
 	"github.com/Rathgrith/membership/pkg/network/code"
 	"math/rand"
 	"strings"
@@ -44,7 +44,7 @@ func (m *MembershipManager) addSelfToList(hostname string) {
 		Hostname:        hostname,
 	}
 	m.selfID = uniqueHostID
-	logutil.Logger.Infof("self id:%v", uniqueHostID)
+	fmt.Printf("self id:%v\n", uniqueHostID)
 }
 
 func (m *MembershipManager) LeaveFromMembershipList(hostname string) {
@@ -94,7 +94,7 @@ func (m *MembershipManager) IncrementSelfCounter() {
 		self.Counter += 1
 		self.LocalUpdateTime = time.Now()
 	} else {
-		logutil.Logger.Errorf("can not find self member instance or self has been marked as failed")
+		fmt.Println("can not find self member instance or self has been marked as failed")
 	}
 }
 
@@ -120,7 +120,7 @@ func (m *MembershipManager) MarkMembersFailedIfNotUpdated(TFail, TCleanup time.D
 		timeElapsed := currentTime.Sub(v.LocalUpdateTime)
 		if timeElapsed > TFail && v.StatusCode != code.Failed {
 			m.membershipList[k].StatusCode = code.Failed
-			logutil.Logger.Infof("Mark member:%s as failed, last update time:%s, elapsed:%v",
+			fmt.Printf("Mark member:%s as failed, last update time:%s, elapsed:%v\n",
 				k, v.LocalUpdateTime.String(), time.Now().Sub(v.LocalUpdateTime))
 			failedMemberHost = append(failedMemberHost, v.Hostname)
 			go m.StartCleanup(k, TCleanup)
@@ -162,5 +162,5 @@ func (m *MembershipManager) StartCleanup(targetKey string, TCleanup time.Duratio
 	m.listMutex.Lock()
 	delete(m.membershipList, targetKey)
 	m.listMutex.Unlock()
-	logutil.Logger.Infof("cleanup %s", targetKey)
+	fmt.Printf("cleanup %s\n", targetKey)
 }

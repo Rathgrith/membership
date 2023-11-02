@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Rathgrith/membership/pkg/gossipGM"
-	"github.com/Rathgrith/membership/pkg/logutil"
 	"github.com/Rathgrith/membership/pkg/network"
 	"github.com/Rathgrith/membership/pkg/network/code"
 	"sync"
@@ -106,20 +105,20 @@ func (s *Service) handleLeave(reqBody []byte) error {
 }
 
 func (s *Service) handleListMember(reqBody []byte) error {
-	logutil.Logger.Infof("Listing all the Members........................")
+	fmt.Println("Listing all the Members........................")
 	for k, v := range s.membershipManager.GetMembershipList() {
-		logutil.Logger.Infof("member ID: %v, Attributes: %v", k, v)
+		fmt.Printf("member ID: %v, Attributes: %v\n", k, v)
 	}
 	return nil
 }
 
 func (s *Service) handleListSelf(reqBody []byte) error {
 	// match the member with the same hostname
-	logutil.Logger.Infof("Listing self........................")
+	fmt.Println("Listing self........................")
 	for k, v := range s.membershipManager.GetMembershipList() {
 		if v.Hostname == s.hostname {
-			logutil.Logger.Infof("current member ID: %v", k)
-			logutil.Logger.Infof("current heartbeat counter: %v", s.heartbeatCounter)
+			fmt.Printf("current member ID: %v\n", k)
+			fmt.Printf("current heartbeat counter: %v\n", s.heartbeatCounter)
 		}
 	}
 	return nil
@@ -153,7 +152,7 @@ func (s *Service) heartbeat(membershipList map[string]*code.MemberInfo,
 		for _, r := range piggybackRequests {
 			err := s.udpClient.Call(r)
 			if err != nil {
-				logutil.Logger.Errorf("piggyback request failed:%v, req:%v, target host:%v", err, r.MethodName, neighborHost)
+				fmt.Printf("piggyback request failed:%v, req:%v, target host:%v\n", err, r.MethodName, neighborHost)
 			}
 		}
 		req := network.CallRequest{
@@ -163,7 +162,7 @@ func (s *Service) heartbeat(membershipList map[string]*code.MemberInfo,
 		}
 		err := s.udpClient.Call(&req)
 		if err != nil {
-			logutil.Logger.Errorf("send heartbeat failed:%v, host:%v", err, neighborHost)
+			fmt.Printf("send heartbeat failed:%v, host:%v\n", err, neighborHost)
 		}
 	}
 }

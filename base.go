@@ -1,7 +1,7 @@
 package membership
 
 import (
-	"github.com/Rathgrith/membership/pkg/logutil"
+	"fmt"
 	"github.com/Rathgrith/membership/pkg/network/code"
 	"time"
 )
@@ -12,13 +12,13 @@ func NewDefaultGossipGMService() (*Service, error) {
 
 func (s *Service) Serve() {
 	errChan := s.udpServer.Serve()
-	logutil.Logger.Debug("start to receive UDP request!")
+	fmt.Println("start to receive UDP request!")
 
 	heartbeatTicker := time.NewTicker(s.tHeartbeat)
 	for {
 		select {
 		case err := <-errChan:
-			logutil.Logger.Errorf(err.Error())
+			fmt.Println(err.Error())
 		case <-heartbeatTicker.C:
 			s.routine()
 		}

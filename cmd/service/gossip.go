@@ -3,17 +3,9 @@ package main
 import (
 	"fmt"
 	"github.com/Rathgrith/membership"
-	"github.com/Rathgrith/membership/pkg/logutil"
-	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	// log is just for test, should not be used in prod env
-	err := logutil.InitDefaultLogger(logrus.DebugLevel)
-	if err != nil {
-		panic(err)
-	}
-
 	service, err := membership.NewDefaultGossipGMService()
 	service.JoinToGroup([]string{"fa23-cs425-4801.cs.illinois.edu"}) // join a group explicitly
 	if err != nil {
